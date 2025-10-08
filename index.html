@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Lista Spesa (Offline)</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>🛒 Lista Spesa (Offline)</h1>
+
+    <form id="add-form">
+      <input id="new-item" type="text" placeholder="Aggiungi un elemento (es. Latte)" autocomplete="off" />
+      <button type="submit">Aggiungi</button>
+    </form>
+
+    <ul id="list"></ul>
+    <p class="hint">Suggerimenti: tocca il testo per segnare fatto/da fare, usa 🗑️ per cancellare.</p>
+    <p class="hint small">Stato: <span id="sw-status">—</span></p>
+  </main>
+
+  <script src="./app.js"></script>
+  <script>
+    // Registra il Service Worker (necessario per offline/installazione)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('./service-worker.js')
+        .then(() => document.getElementById('sw-status').textContent = 'Service Worker attivo ✅')
+        .catch(() => document.getElementById('sw-status').textContent = 'SW non registrato ❌');
+    } else {
+      document.getElementById('sw-status').textContent = 'SW non supportato';
+    }
+  </script>
+</body>
+</html>
