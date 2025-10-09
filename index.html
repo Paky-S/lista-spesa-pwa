@@ -12,11 +12,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="./styles.v6.css" />
 </head>
 <body>
   <main class="card">
     <h1>🛒 Lista Spesa</h1>
+    <p class="small">VERSIONE BUILD: v6</p>
 
     <form id="add-form" class="add-form" autocomplete="off">
       <input id="new-item" type="text" placeholder="Oggetto (es. Latte)" aria-label="Oggetto" />
@@ -36,28 +37,45 @@
 
     <ul id="list" class="list"></ul>
 
-    <p class="hint small">Stato: <span id="sw-status">—</span></p>
+    <p class="hint small">Stato SW: <span id="sw-status">—</span></p>
   </main>
 
-  <script src="./app.js"></script>
-  <script>
-  const SW_VERSION = 'v4'; // ↑ aumenta a ogni release
+  <script src="./app.v6.js"></script>
 
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker
-      .register('./service-worker.js?v=' + SW_VERSION)
-      .then(async (reg) => {
-        // chiede subito al browser di verificare se esiste una versione nuova del SW
-        try { await reg.update(); } catch {}
-        document.getElementById('sw-status').textContent = 'Service Worker attivo ✅ ' + SW_VERSION;
-      })
-      .catch(() => {
-        document.getElementById('sw-status').textContent = 'SW non registrato ❌';
-      });
-  } else {
-    document.getElementById('sw-status').textContent = 'SW non supportato';
-  }
-</script>
-<p class="hint small">Versione: v4</p>
+  <!-- Registrazione SW con versione e autoreload -->
+  <script>
+    const SW_VERSION = 'v6';
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .register('./service-worker.js?v=' + SW_VERSION)
+        .then((reg) => {
+          // Controlla subito update
+          reg.update().catch(()=>{});
+          // Se c'è una nuova versione waiting, attivala
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+          reg.addEventListener('updatefound', () => {
+            const nw = reg.installing;
+            nw?.addEventListener('statechange', () => {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+
+          // Quando cambia il controller → ricarica la pagina
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            location.reload();
+          });
+
+          document.getElementById('sw-status').textContent = 'Attivo ✅ ' + SW_VERSION;
+        })
+        .catch(() => {
+          document.getElementById('sw-status').textContent = 'SW non registrato ❌';
+        });
+    } else {
+      document.getElementById('sw-status').textContent = 'SW non supportato';
+    }
+  </script>
 </body>
 </html>
