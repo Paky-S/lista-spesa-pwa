@@ -2,7 +2,8 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Lista Spesa (Offline)</title>
 
   <!-- PWA -->
@@ -12,12 +13,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <link rel="stylesheet" href="./styles.v6.css" />
+  <link rel="stylesheet" href="./styles.v7.css" />
 </head>
 <body>
   <main class="card">
     <h1>🛒 Lista Spesa</h1>
-    <p class="small">VERSIONE BUILD: v6</p>
+    <p class="version small">VERSIONE BUILD: v7</p>
 
     <form id="add-form" class="add-form" autocomplete="off">
       <input id="new-item" type="text" placeholder="Oggetto (es. Latte)" aria-label="Oggetto" />
@@ -35,25 +36,28 @@
       <button type="submit" class="add-btn">Aggiungi</button>
     </form>
 
+    <!-- Separatore evidente -->
+    <div class="section-head">
+      <span class="section-title">La tua lista</span>
+      <span class="badge" id="count">0</span>
+    </div>
+
     <ul id="list" class="list"></ul>
 
-    <p class="hint small">Stato SW: <span id="sw-status">—</span></p>
+    <p class="hint small sw">Stato SW: <span id="sw-status">—</span></p>
   </main>
 
-  <script src="./app.v6.js"></script>
+  <script src="./app.v7.js"></script>
 
   <!-- Registrazione SW con versione e autoreload -->
   <script>
-    const SW_VERSION = 'v6';
+    const SW_VERSION = 'v7';
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('./service-worker.js?v=' + SW_VERSION)
         .then((reg) => {
-          // Controlla subito update
           reg.update().catch(()=>{});
-          // Se c'è una nuova versione waiting, attivala
           if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-
           reg.addEventListener('updatefound', () => {
             const nw = reg.installing;
             nw?.addEventListener('statechange', () => {
@@ -62,12 +66,7 @@
               }
             });
           });
-
-          // Quando cambia il controller → ricarica la pagina
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            location.reload();
-          });
-
+          navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
           document.getElementById('sw-status').textContent = 'Attivo ✅ ' + SW_VERSION;
         })
         .catch(() => {

@@ -1,0 +1,147 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --card: #111827;
+  --border: #1f2937;
+  --ink: #e5e7eb;
+  --muted: #9ca3af;
+  --field: #0b1220;
+  --brand: #2563eb;
+  --radius: 16px;
+  --gap: 10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --maxw: 720px;
+  --touch: 44px;
+  --fs-1: clamp(18px, 2.4vw, 22px);
+  --fs-2: clamp(16px, 2.2vw, 18px); /* ≥16px per evitare zoom iOS su focus */
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+html { -webkit-text-size-adjust: 100%; } /* riduce zoom automatico iOS */
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 8px) 12px calc(var(--safe-bottom) + 8px);
+  display: grid;
+  place-items: center;
+}
+
+.card {
+  width: min(100%, var(--maxw));
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  padding: 18px 14px;
+}
+
+h1 { margin: 4px 6px 4px; font-size: 1.3rem; }
+.small { font-size: .85rem; opacity: .7; margin: 0 6px 10px; }
+.version { margin-bottom: 12px; }
+
+.add-form {
+  display: grid;
+  grid-template-columns: 1fr minmax(86px, 110px) minmax(110px, 140px) auto;
+  gap: var(--gap);
+  margin: 6px 6px 10px;
+}
+
+input, select, button {
+  height: var(--touch);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--field);
+  color: var(--ink);
+  font-size: var(--fs-2);
+  line-height: 1.2;
+  padding: 10px 12px;
+}
+
+input::placeholder { color: var(--muted); }
+
+select {
+  appearance: auto;            /* picker nativo */
+  -webkit-appearance: menulist;
+  background: var(--field);
+}
+
+.add-btn {
+  background: var(--brand);
+  border: none;
+  padding: 0 14px;
+  color: white;
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .add-form { grid-template-columns: 1fr 1fr; }
+  #new-item { grid-column: span 2; }
+  .add-btn  { grid-column: span 2; }
+}
+
+/* Separatore tra form e lista */
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  padding: 10px 6px 6px;
+  margin: 4px 0 8px;
+  border-top: 1px solid var(--border);
+}
+.section-title { font-weight: 600; color: var(--ink); opacity: .9; }
+.badge {
+  display: inline-block;
+  min-width: 28px;
+  padding: 4px 8px;
+  text-align: center;
+  background: #0b1220;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: .9rem;
+  color: var(--ink);
+}
+
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+
+li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 4px;
+  align-items: center;
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.row-top {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+
+/* Testo che WRAPPA e non esce mai dal riquadro */
+.text-btn {
+  background: transparent; border: none; color: var(--ink);
+  font-size: var(--fs-1); text-align: left; padding: 6px 0;
+  white-space: normal;               /* no single-line */
+  word-break: break-word;            /* spezza parole lunghe */
+  overflow-wrap: anywhere;           /* spezza anche senza spazi */
+}
+
+.meta { color: var(--muted); font-size: 0.92rem; margin-top: -2px; }
+
+.actions { display: flex; align-items: center; gap: 6px; }
+.icon-btn {
+  background: transparent; border: none; color: var(--ink);
+  font-size: 1.15rem; width: var(--touch); height: var(--touch);
+  display: grid; place-items: center;
+}
+
+li.done .text-btn { text-decoration: line-through; opacity: .7; }
+
+/* "Stato SW" più in basso, discreto */
+.sw { margin-top: 14px; opacity: .55; }
