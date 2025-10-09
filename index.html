@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Lista Spesa (Offline)</title>
 
   <!-- PWA -->
@@ -16,21 +16,31 @@
 </head>
 <body>
   <main class="card">
-    <h1>🛒 Lista Spesa (Offline)</h1>
+    <h1>🛒 Lista Spesa</h1>
 
-    <form id="add-form">
-      <input id="new-item" type="text" placeholder="Aggiungi un elemento (es. Latte)" autocomplete="off" />
-      <button type="submit">Aggiungi</button>
+    <form id="add-form" class="add-form" autocomplete="off">
+      <input id="new-item" type="text" placeholder="Oggetto (es. Latte)" aria-label="Oggetto" />
+      <input id="qty" type="number" inputmode="decimal" step="any" placeholder="Qtà" aria-label="Quantità (opz.)" />
+      <select id="unit" aria-label="Unità (opz.)">
+        <option value="">Unità</option>
+        <option value="pz">pz</option>
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="L">L</option>
+        <option value="ml">ml</option>
+        <option value="confezione">confezione</option>
+        <option value="pacco">pacco</option>
+      </select>
+      <button type="submit" class="add-btn">Aggiungi</button>
     </form>
 
-    <ul id="list"></ul>
-    <p class="hint">Suggerimenti: tocca il testo per segnare fatto/da fare, usa 🗑️ per cancellare.</p>
+    <ul id="list" class="list"></ul>
+
     <p class="hint small">Stato: <span id="sw-status">—</span></p>
   </main>
 
   <script src="./app.js"></script>
   <script>
-    // Registra il Service Worker (necessario per offline/installazione)
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('./service-worker.js')
         .then(() => document.getElementById('sw-status').textContent = 'Service Worker attivo ✅')

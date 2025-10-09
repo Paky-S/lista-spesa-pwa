@@ -1,5 +1,6 @@
 // Versiona la cache: cambia questo valore quando modifichi i file
-const CACHE_NAME = 'lista-spesa-cache-v1';
+const CACHE_NAME = 'lista-spesa-cache-v3'; // <— aumenta la versione
+
 const ASSETS = [
   './',
   './index.html',
