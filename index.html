@@ -41,13 +41,23 @@
 
   <script src="./app.js"></script>
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./service-worker.js')
-        .then(() => document.getElementById('sw-status').textContent = 'Service Worker attivo ✅')
-        .catch(() => document.getElementById('sw-status').textContent = 'SW non registrato ❌');
-    } else {
-      document.getElementById('sw-status').textContent = 'SW non supportato';
-    }
-  </script>
+  const SW_VERSION = 'v4'; // ↑ aumenta a ogni release
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker
+      .register('./service-worker.js?v=' + SW_VERSION)
+      .then(async (reg) => {
+        // chiede subito al browser di verificare se esiste una versione nuova del SW
+        try { await reg.update(); } catch {}
+        document.getElementById('sw-status').textContent = 'Service Worker attivo ✅ ' + SW_VERSION;
+      })
+      .catch(() => {
+        document.getElementById('sw-status').textContent = 'SW non registrato ❌';
+      });
+  } else {
+    document.getElementById('sw-status').textContent = 'SW non supportato';
+  }
+</script>
+<p class="hint small">Versione: v4</p>
 </body>
 </html>
