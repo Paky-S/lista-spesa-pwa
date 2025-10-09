@@ -1,10 +1,10 @@
-const CACHE_NAME = 'lista-spesa-cache-v7';
+const CACHE_NAME = 'lista-spesa-cache-v8';
 
 const ASSETS = [
   './',
   './index.html',
-  './styles.v7.css',
-  './app.v7.js',
+  './styles.v8.css',
+  './app.v8.js',
   './manifest.json',
   './icons/icon-192.png',
   './icons/icon-512.png'

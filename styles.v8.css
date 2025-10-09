@@ -1,0 +1,150 @@
+:root {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --card: #111827;
+  --border: #1f2937;
+  --ink: #e5e7eb;
+  --muted: #9ca3af;
+  --field: #0b1220;
+  --brand: #2563eb;
+  --radius: 16px;
+  --gap: 10px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --maxw: 720px;
+  --touch: 44px;
+  --fs-1: clamp(18px, 2.4vw, 22px);
+  --fs-2: clamp(16px, 2.2vw, 18px); /* ≥16px → niente auto-zoom iOS */
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, system-ui, Segoe UI, Roboto, Arial, sans-serif;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 8px) 12px calc(var(--safe-bottom) + 8px);
+  display: grid;
+  place-items: center;
+}
+
+.card {
+  width: min(100%, var(--maxw));
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  padding: 18px 14px;
+}
+
+h1 { margin: 4px 6px 4px; font-size: 1.3rem; }
+.small { font-size: .85rem; opacity: .7; margin: 0 6px 10px; }
+.version { margin-bottom: 12px; }
+
+.add-form {
+  display: grid;
+  grid-template-columns: 1fr minmax(86px, 110px) minmax(120px, 150px) auto;
+  gap: var(--gap);
+  margin: 6px 6px 10px;
+}
+
+input, select, button {
+  height: var(--touch);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--field);
+  color: var(--ink);
+  font-size: var(--fs-2);
+  line-height: 1.25;
+  padding: 10px 12px;
+}
+
+input::placeholder { color: var(--muted); }
+
+select {
+  appearance: auto;            /* picker nativo */
+  -webkit-appearance: menulist;
+  background: var(--field);
+}
+
+.add-btn {
+  background: var(--brand);
+  border: none;
+  padding: 0 14px;
+  color: white;
+  font-weight: 600;
+}
+
+@media (max-width: 520px) {
+  .add-form { grid-template-columns: 1fr 1fr; }
+  #new-item { grid-column: span 2; }
+  .add-btn  { grid-column: span 2; }
+}
+
+/* Separatore molto più generoso tra form e lista */
+.section-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px;
+  padding: 18px 6px 8px;
+  margin: 8px 0 16px;
+  border-top: 1.5px solid var(--border);
+}
+.section-title { font-weight: 700; letter-spacing: .2px; opacity: .95; }
+.badge {
+  display: inline-block;
+  min-width: 32px;
+  padding: 5px 9px;
+  text-align: center;
+  background: #0b1220;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: .95rem;
+  color: var(--ink);
+}
+
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+
+/* Ogni item cresce in altezza quando serve */
+li {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  row-gap: 6px;
+  align-items: start;                 /* <— TOP, non center */
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.row-top {
+  grid-column: 1 / -1;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+}
+
+/* Testo: block + wrap forte */
+.text-btn {
+  display: block;                     /* <— assicura espansione verticale */
+  width: 100%;
+  background: transparent; border: none; color: var(--ink);
+  font-size: var(--fs-1); text-align: left; padding: 6px 0 0;
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.meta { color: var(--muted); font-size: .94rem; margin-top: -2px; }
+
+.actions { display: flex; align-items: center; gap: 6px; }
+.icon-btn {
+  background: transparent; border: none; color: var(--ink);
+  font-size: 1.2rem; width: var(--touch); height: var(--touch);
+  display: grid; place-items: center;
+}
+
+li.done .text-btn { text-decoration: line-through; opacity: .78; }
+
+/* "Stato SW" discretissimo e più in basso */
+.sw { margin-top: 22px; opacity: .45; }

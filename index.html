@@ -13,22 +13,23 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <link rel="stylesheet" href="./styles.v7.css" />
+  <link rel="stylesheet" href="./styles.v8.css" />
 </head>
 <body>
   <main class="card">
     <h1>🛒 Lista Spesa</h1>
-    <p class="version small">VERSIONE BUILD: v7</p>
+    <p class="version small">VERSIONE BUILD: v8</p>
 
     <form id="add-form" class="add-form" autocomplete="off">
       <input id="new-item" type="text" placeholder="Oggetto (es. Latte)" aria-label="Oggetto" />
-      <input id="qty" type="number" inputmode="decimal" step="any" placeholder="Qtà" aria-label="Quantità (opz.)" />
+      <!-- qty come testo con tastiera numerica così controlliamo le cifre -->
+      <input id="qty" type="text" inputmode="decimal" placeholder="Qtà" aria-label="Quantità (opz.)" />
       <select id="unit" aria-label="Unità (opz.)">
         <option value="">Unità</option>
         <option value="pz">pz</option>
         <option value="kg">kg</option>
         <option value="g">g</option>
-        <option value="L">L</option>
+        <option value="Litri">Litri</option>
         <option value="ml">ml</option>
         <option value="confezione">confezione</option>
         <option value="pacco">pacco</option>
@@ -36,7 +37,7 @@
       <button type="submit" class="add-btn">Aggiungi</button>
     </form>
 
-    <!-- Separatore evidente -->
+    <!-- Separatore ben evidente e distanziato -->
     <div class="section-head">
       <span class="section-title">La tua lista</span>
       <span class="badge" id="count">0</span>
@@ -47,11 +48,11 @@
     <p class="hint small sw">Stato SW: <span id="sw-status">—</span></p>
   </main>
 
-  <script src="./app.v7.js"></script>
+  <script src="./app.v8.js"></script>
 
   <!-- Registrazione SW con versione e autoreload -->
   <script>
-    const SW_VERSION = 'v7';
+    const SW_VERSION = 'v8';
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
         .register('./service-worker.js?v=' + SW_VERSION)
@@ -69,9 +70,7 @@
           navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
           document.getElementById('sw-status').textContent = 'Attivo ✅ ' + SW_VERSION;
         })
-        .catch(() => {
-          document.getElementById('sw-status').textContent = 'SW non registrato ❌';
-        });
+        .catch(() => { document.getElementById('sw-status').textContent = 'SW non registrato ❌'; });
     } else {
       document.getElementById('sw-status').textContent = 'SW non supportato';
     }
