@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="it">
+<meta charset="utf-8" />
+<title>Reset PWA</title>
+<pre id="log">Reset in corso…</pre>
+<script>
+(async () => {
+  const out = [];
+  try {
+    // Unregister tutti i service worker
+    if ('serviceWorker' in navigator) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      for (const r of regs) {
+        await r.unregister();
+        out.push('SW unregistered: ' + (r.scope || '(scope sconosciuto)'));
+      }
+    } else {
+      out.push('Service Worker non supportato');
+    }
+
+    // Cancella tutte le cache
+    if ('caches' in self) {
+      const keys = await caches.keys();
+      for (const k of keys) {
+        await caches.delete(k);
+        out.push('Cache eliminata: ' + k);
+      }
+    }
+
+    out.push('Fatto. Torna alla home e ricarica.');
+  } catch (e) {
+    out.push('Errore: ' + e);
+  }
+  document.getElementById('log').textContent = out.join('\n');
+})();
+</script>
