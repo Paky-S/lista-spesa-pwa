@@ -11,7 +11,7 @@
 
   <!-- Colore barra browser dinamico in base al tema -->
   <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f6">
-  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b0b0d">
 
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -38,19 +38,28 @@
     </p>
   </aside>
 
-  <!-- CONTENUTO PRINCIPALE -->
-  <main class="card">
-    <header class="top-bar">
-      <button id="sidebar-toggle" class="icon-btn nav-btn" aria-label="Apri liste">
-        ☰
-      </button>
-      <div class="titles">
-        <h1>🛒 Lista Spesa</h1>
-        <p id="current-list-name" class="current-list small"></p>
-      </div>
-    </header>
+  <!-- ACTION SHEET LISTA -->
+  <div id="list-action-sheet-backdrop" class="sheet-backdrop"></div>
+  <div id="list-action-sheet" class="sheet">
+    <div class="sheet-body">
+      <p id="sheet-title" class="sheet-title"></p>
+      <button id="sheet-rename-btn" class="sheet-btn">Rinomina</button>
+      <button id="sheet-delete-btn" class="sheet-btn sheet-btn-danger">Elimina</button>
+      <button id="sheet-cancel-btn" class="sheet-btn sheet-btn-ghost">Annulla</button>
+    </div>
+  </div>
 
-    <p class="version small" id="version-label"></p>
+  <!-- HEADER FUORI DAL MAIN -->
+  <header class="app-header">
+    <button id="sidebar-toggle" class="icon-btn nav-btn" aria-label="Apri liste">
+      ☰
+    </button>
+    <h1 class="app-title">Lista Spesa</h1>
+  </header>
+
+  <!-- CONTENUTO PRINCIPALE (SOLO LISTA) -->
+  <main class="card">
+    <h2 id="current-list-name" class="list-title"></h2>
 
     <form id="add-form" class="add-form" autocomplete="off">
       <input id="new-item" type="text" placeholder="Oggetto (es. Latte)" aria-label="Oggetto" />
@@ -69,14 +78,22 @@
     </form>
 
     <div class="section-head">
-      <span class="section-title">La tua lista</span>
+      <span class="section-title">Elementi</span>
       <span class="badge" id="count">0</span>
     </div>
 
     <ul id="list" class="list"></ul>
-
-    <p class="hint small sw">Stato SW: <span id="sw-status">—</span></p>
   </main>
+
+  <!-- FOOTER FUORI DAL MAIN -->
+  <footer class="app-footer">
+    <p class="small footer-line" id="version-label">
+      <!-- verrà sovrascritto da JS con APP_VERSION -->
+    </p>
+    <p class="small footer-line">
+      Stato SW: <span id="sw-status">SW non registrato ❌</span>
+    </p>
+  </footer>
 
   <!-- Config: definisce APP_VERSION -->
   <script src="./config.js"></script>
@@ -93,7 +110,9 @@
 
       if (!('serviceWorker' in navigator) || typeof APP_VERSION === 'undefined') {
         const swEl = document.getElementById('sw-status');
-        if (swEl) swEl.textContent = 'SW non supportato o versione non definita';
+        if (swEl && !swEl.textContent) {
+          swEl.textContent = 'SW non registrato ❌';
+        }
         return;
       }
 

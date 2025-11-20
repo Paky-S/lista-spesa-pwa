@@ -7,7 +7,7 @@
 const DB_NAME = 'lista_spesa_db';
 const TODO_STORE = 'todos';
 const LIST_STORE = 'lists';
-const VERSION = 2; // versione schema DB per le liste
+const VERSION = 2; // versione schema: TODO + LISTE
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -113,19 +113,21 @@ const sidebarCloseEl = document.getElementById('sidebar-close');
 const listsContainerEl = document.getElementById('lists-container');
 const addListBtn = document.getElementById('add-list-btn');
 
+// Action sheet
+const sheetEl = document.getElementById('list-action-sheet');
+const sheetBackdropEl = document.getElementById('list-action-sheet-backdrop');
+const sheetTitleEl = document.getElementById('sheet-title');
+const sheetRenameBtn = document.getElementById('sheet-rename-btn');
+const sheetDeleteBtn = document.getElementById('sheet-delete-btn');
+const sheetCancelBtn = document.getElementById('sheet-cancel-btn');
+
 // Limite cifre quantità
 const MAX_QTY_DIGITS = 10;
 
 let currentListId = null;
 let listsCache = [];
-
-// Action sheet per le liste
-let actionMenuRoot = null;
-let actionMenuTitleEl = null;
-let actionMenuRenameBtn = null;
-let actionMenuDeleteBtn = null;
-let actionMenuCancelBtn = null;
-let actionMenuCurrentList = null;
+let sheetList = null;
+let sheetCanDelete = false;
 
 // ======================
 //  Helpers
@@ -179,97 +181,6 @@ function fmtMeta(item) {
 
 function getCurrentList() {
   return listsCache.find(l => l.id === currentListId) || null;
-}
-
-// ======================
-//  Action sheet per liste
-// ======================
-
-function ensureActionMenu() {
-  if (actionMenuRoot) return;
-
-  const backdrop = document.createElement('div');
-  backdrop.className = 'action-menu-backdrop';
-
-  const menu = document.createElement('div');
-  menu.className = 'action-menu';
-
-  const title = document.createElement('p');
-  title.className = 'action-menu-title';
-
-  const btnRename = document.createElement('button');
-  btnRename.className = 'action-btn';
-  btnRename.textContent = 'Rinomina';
-
-  const btnDelete = document.createElement('button');
-  btnDelete.className = 'action-btn danger';
-  btnDelete.textContent = 'Elimina';
-
-  const btnCancel = document.createElement('button');
-  btnCancel.className = 'action-btn cancel';
-  btnCancel.textContent = 'Annulla';
-
-  menu.appendChild(title);
-  menu.appendChild(btnRename);
-  menu.appendChild(btnDelete);
-  menu.appendChild(btnCancel);
-
-  backdrop.appendChild(menu);
-  document.body.appendChild(backdrop);
-
-  actionMenuRoot = backdrop;
-  actionMenuTitleEl = title;
-  actionMenuRenameBtn = btnRename;
-  actionMenuDeleteBtn = btnDelete;
-  actionMenuCancelBtn = btnCancel;
-
-  // chiusura cliccando fuori
-  backdrop.addEventListener('click', (e) => {
-    if (e.target === backdrop) {
-      closeActionMenu();
-    }
-  });
-}
-
-function openListActionMenu(list) {
-  ensureActionMenu();
-  actionMenuCurrentList = list;
-  actionMenuTitleEl.textContent = `Lista: "${list.name}"`;
-
-  // se è l'unica lista, non permettiamo Elimina
-  if (listsCache.length === 1 && list.id === currentListId) {
-    actionMenuDeleteBtn.disabled = true;
-    actionMenuDeleteBtn.classList.add('disabled');
-  } else {
-    actionMenuDeleteBtn.disabled = false;
-    actionMenuDeleteBtn.classList.remove('disabled');
-  }
-
-  actionMenuRenameBtn.onclick = async () => {
-    const l = actionMenuCurrentList;
-    closeActionMenu();
-    if (l) await renameList(l);
-  };
-
-  actionMenuDeleteBtn.onclick = async () => {
-    const l = actionMenuCurrentList;
-    closeActionMenu();
-    if (l && !actionMenuDeleteBtn.disabled) {
-      await deleteListFlow(l);
-    }
-  };
-
-  actionMenuCancelBtn.onclick = () => {
-    closeActionMenu();
-  };
-
-  actionMenuRoot.classList.add('open');
-}
-
-function closeActionMenu() {
-  if (!actionMenuRoot) return;
-  actionMenuRoot.classList.remove('open');
-  actionMenuCurrentList = null;
 }
 
 // ======================
@@ -344,8 +255,8 @@ function updateListsSidebarUI() {
     btn.appendChild(nameSpan);
     btn.appendChild(countSpan);
 
-    // click normale → seleziona lista
-    btn.addEventListener('click', () => {
+    // click normale → seleziona
+    btn.addEventListener('click', (e) => {
       if (btn._longPressHandled) {
         btn._longPressHandled = false;
         return;
@@ -357,7 +268,7 @@ function updateListsSidebarUI() {
       render();
     });
 
-    // tasto destro → menù azioni
+    // tasto destro → menu azioni
     btn.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       handleListAction(l);
@@ -392,10 +303,63 @@ function updateListsSidebarUI() {
   });
 }
 
-function handleListAction(list) {
-  // ora non chiediamo più "r/e": apriamo l'action sheet
-  openListActionMenu(list);
+// ======================
+//  Action sheet gestione lista
+// ======================
+
+function openListActionSheet(list, canDelete) {
+  sheetList = list;
+  sheetCanDelete = !!canDelete;
+
+  if (sheetTitleEl) {
+    sheetTitleEl.textContent = `Lista: "${list.name}"`;
+  }
+
+  if (sheetCanDelete) {
+    sheetDeleteBtn.classList.remove('disabled');
+    sheetDeleteBtn.disabled = false;
+  } else {
+    sheetDeleteBtn.classList.add('disabled');
+    sheetDeleteBtn.disabled = true;
+  }
+
+  sheetEl.classList.add('open');
+  sheetBackdropEl.classList.add('open');
 }
+
+function closeListActionSheet() {
+  sheetEl.classList.remove('open');
+  sheetBackdropEl.classList.remove('open');
+  sheetList = null;
+  sheetCanDelete = false;
+}
+
+function handleListAction(list) {
+  const isOnlyList = (listsCache.length === 1 && list.id === currentListId);
+  const canDelete = !isOnlyList;
+  openListActionSheet(list, canDelete);
+}
+
+sheetBackdropEl.addEventListener('click', closeListActionSheet);
+sheetCancelBtn.addEventListener('click', closeListActionSheet);
+
+sheetRenameBtn.addEventListener('click', async () => {
+  if (!sheetList) return;
+  const target = sheetList;
+  closeListActionSheet();
+  await renameList(target);
+});
+
+sheetDeleteBtn.addEventListener('click', async () => {
+  if (!sheetList) return;
+  if (!sheetCanDelete) {
+    window.alert('Non puoi eliminare l’unica lista. Crea prima un’altra lista oppure rinomina questa.');
+    return;
+  }
+  const target = sheetList;
+  closeListActionSheet();
+  await deleteListFlow(target);
+});
 
 async function renameList(list) {
   const nuovo = (window.prompt('Nuovo nome per la lista:', list.name) || '').trim();
@@ -416,17 +380,14 @@ async function deleteListFlow(list) {
     if (!ok) return;
   }
 
-  // elimina tutti i todo della lista
   const allTodos = await dbGetAllTodos();
   const toDelete = allTodos.filter(t => t.listId === list.id);
   for (const t of toDelete) {
     await dbDeleteTodo(t.id);
   }
 
-  // elimina lista
   await dbDeleteList(list.id);
 
-  // ricarica liste e scegli nuova lista corrente
   await loadLists();
   const cur = getCurrentList();
   if (!cur && listsCache.length > 0) {
@@ -508,7 +469,7 @@ async function render() {
     listEl.appendChild(li);
   }
 
-  // aggiorna conteggi nelle pill delle liste
+  // aggiorna conteggi nelle "pillole" lista
   const sidebarButtons = listsContainerEl.querySelectorAll('.list-pill');
   sidebarButtons.forEach(btn => {
     const id = btn.dataset.id;
@@ -556,4 +517,3 @@ formEl.addEventListener('submit', async (e) => {
   await loadLists();
   await render();
 })();
-d
