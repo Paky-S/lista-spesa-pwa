@@ -1,14 +1,14 @@
 :root {
   color-scheme: light dark;
 
-  /* PALETTE DI DEFAULT: TEMA CHIARO */
-  --bg: #f3f4f6;        /* sfondo pagina */
-  --card: #ffffff;      /* card principale */
-  --border: #d1d5db;    /* bordi leggeri */
-  --ink: #111827;       /* testo principale (quasi nero) */
-  --muted: #6b7280;     /* testo secondario */
-  --field: #f9fafb;     /* sfondo input/list item */
-  --brand: #2563eb;     /* blu azione */
+  /* TEMA CHIARO (default) */
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --border: #d1d5db;
+  --ink: #111827;
+  --muted: #6b7280;
+  --field: #f9fafb;
+  --brand: #2563eb;
 
   --radius: 16px;
   --gap: 10px;
@@ -20,7 +20,7 @@
   --fs-2: clamp(16px, 2.2vw, 18px);
 }
 
-/* OVERRIDE PER TEMA SCURO */
+/* TEMA SCURO */
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0f172a;
@@ -52,6 +52,7 @@ body {
   place-items: center;
 }
 
+/* CARD PRINCIPALE */
 .card {
   width: min(100%, var(--maxw));
   background: var(--card);
@@ -61,9 +62,28 @@ body {
   padding: 18px 14px;
 }
 
+/* TOP BAR CON HAMBURGER */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.titles {
+  display: flex;
+  flex-direction: column;
+}
+
 h1 {
-  margin: 4px 6px 4px;
+  margin: 0 0 2px 0;
   font-size: 1.3rem;
+}
+
+.current-list {
+  margin: 0;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .small {
@@ -72,7 +92,25 @@ h1 {
   margin: 0 6px 10px;
 }
 
-.version { margin-bottom: 12px; }
+.version {
+  margin-bottom: 12px;
+}
+
+.icon-btn {
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-size: 1.2rem;
+  width: var(--touch);
+  height: var(--touch);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.nav-btn {
+  margin-left: 4px;
+}
 
 /* FORM IN ALTO */
 .add-form {
@@ -111,6 +149,7 @@ select {
   padding: 0 14px;
   color: #ffffff;
   font-weight: 600;
+  cursor: pointer;
 }
 
 @media (max-width: 520px) {
@@ -148,7 +187,7 @@ select {
   color: var(--ink);
 }
 
-/* LISTA */
+/* LISTA ELEMENTI */
 .list {
   list-style: none;
   padding: 0;
@@ -189,6 +228,7 @@ li {
   white-space: normal;
   word-break: break-word;
   overflow-wrap: anywhere;
+  cursor: pointer;
 }
 
 .meta {
@@ -203,17 +243,6 @@ li {
   gap: 6px;
 }
 
-.icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--ink);
-  font-size: 1.2rem;
-  width: var(--touch);
-  height: var(--touch);
-  display: grid;
-  place-items: center;
-}
-
 li.done .text-btn {
   text-decoration: line-through;
   opacity: .78;
@@ -223,4 +252,119 @@ li.done .text-btn {
 .sw {
   margin-top: 22px;
   opacity: .45;
+}
+
+/* ========= SIDEBAR LISTE ========= */
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.22s ease-out;
+  z-index: 8;
+}
+
+.sidebar {
+  position: fixed;
+  inset: var(--safe-top) auto var(--safe-bottom) 0;
+  width: min(80vw, 320px);
+  max-width: 320px;
+  background: var(--card);
+  border-right: 1px solid var(--border);
+  box-shadow: 4px 0 24px rgba(0,0,0,0.25);
+  transform: translateX(-100%);
+  transition: transform 0.22s ease-out;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  padding: 10px 10px 12px;
+}
+
+.sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.close-btn {
+  font-size: 1rem;
+}
+
+.lists-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list-pill {
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--field);
+  color: var(--ink);
+  font-size: .92rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.list-pill span.name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.list-pill span.count {
+  font-size: .78rem;
+  opacity: .7;
+}
+
+.list-pill.active {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 1px rgba(37,99,235,0.25);
+}
+
+.add-list-btn {
+  margin-top: 8px;
+  width: 100%;
+  border-radius: 999px;
+  border: none;
+  background: var(--brand);
+  color: #fff;
+  padding: 8px 12px;
+  font-size: .95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sidebar-hint {
+  margin: 8px 2px 0;
+  font-size: .8rem;
+  color: var(--muted);
 }

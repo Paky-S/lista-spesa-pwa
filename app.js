@@ -1,61 +1,133 @@
 // app.js
 
-// IndexedDB
+// ======================
+//  IndexedDB
+// ======================
+
 const DB_NAME = 'lista_spesa_db';
-const STORE = 'todos';
-const VERSION = 1;
+const TODO_STORE = 'todos';
+const LIST_STORE = 'lists';
+const VERSION = 2; // bump per introdurre le liste
 
 function openDB() {
   return new Promise((resolve, reject) => {
     const req = indexedDB.open(DB_NAME, VERSION);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) {
-        db.createObjectStore(STORE, { keyPath: 'id' });
+      if (!db.objectStoreNames.contains(TODO_STORE)) {
+        db.createObjectStore(TODO_STORE, { keyPath: 'id' });
+      }
+      if (!db.objectStoreNames.contains(LIST_STORE)) {
+        db.createObjectStore(LIST_STORE, { keyPath: 'id' });
       }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
 }
-async function dbGetAll() {
+
+// ---- Operazioni TODO ----
+async function dbGetAllTodos() {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readonly');
-    const req = tx.objectStore(STORE).getAll();
+    const tx = db.transaction(TODO_STORE, 'readonly');
+    const req = tx.objectStore(TODO_STORE).getAll();
     req.onsuccess = () => resolve(req.result || []);
     req.onerror = () => reject(req.error);
   });
 }
-async function dbPut(item) {
+
+async function dbPutTodo(item) {
   const db = await openDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put(item);
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
-}
-async function dbDelete(id) {
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(id);
+    const tx = db.transaction(TODO_STORE, 'readwrite');
+    tx.objectStore(TODO_STORE).put(item);
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
 }
 
-// UI
+async function dbDeleteTodo(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(TODO_STORE, 'readwrite');
+    tx.objectStore(TODO_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ---- Operazioni LISTE ----
+async function dbGetAllLists() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(LIST_STORE, 'readonly');
+    const req = tx.objectStore(LIST_STORE).getAll();
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+
+async function dbPutList(list) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(LIST_STORE, 'readwrite');
+    tx.objectStore(LIST_STORE).put(list);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbDeleteList(id) {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(LIST_STORE, 'readwrite');
+    tx.objectStore(LIST_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbCountTodosForList(listId) {
+  const all = await dbGetAllTodos();
+  return all.filter(t => t.listId === listId).length;
+}
+
+// ======================
+//  Stato UI
+// ======================
+
 const listEl = document.getElementById('list');
 const formEl = document.getElementById('add-form');
 const inputEl = document.getElementById('new-item');
 const qtyEl = document.getElementById('qty');
 const unitEl = document.getElementById('unit');
 const countEl = document.getElementById('count');
+const currentListNameEl = document.getElementById('current-list-name');
+
+// Sidebar
+const sidebarEl = document.getElementById('sidebar');
+const sidebarBackdropEl = document.getElementById('sidebar-backdrop');
+const sidebarToggleEl = document.getElementById('sidebar-toggle');
+const sidebarCloseEl = document.getElementById('sidebar-close');
+const listsContainerEl = document.getElementById('lists-container');
+const addListBtn = document.getElementById('add-list-btn');
 
 // Limite cifre quantità
 const MAX_QTY_DIGITS = 10;
+
+let currentListId = null;
+let listsCache = [];
+
+// ======================
+//  Helpers
+// ======================
+
+function uuid() {
+  if (crypto && crypto.randomUUID) return crypto.randomUUID();
+  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+}
+
 function sanitizeQtyInput(raw) {
   let out = '';
   let digits = 0;
@@ -73,6 +145,7 @@ function sanitizeQtyInput(raw) {
   }
   return out;
 }
+
 qtyEl.addEventListener('input', (e) => {
   const val = e.target.value;
   const san = sanitizeQtyInput(val);
@@ -87,10 +160,6 @@ qtyEl.addEventListener('input', (e) => {
   }
 });
 
-function uuid() {
-  if (crypto && crypto.randomUUID) return crypto.randomUUID();
-  return 'id-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
-}
 function fmtMeta(item) {
   const q = (item.qty ?? '').toString().trim();
   const u = (item.unit ?? '').toString().trim();
@@ -100,9 +169,227 @@ function fmtMeta(item) {
   return u;
 }
 
+function getCurrentList() {
+  return listsCache.find(l => l.id === currentListId) || null;
+}
+
+// ======================
+//  Liste: init e UI
+// ======================
+
+async function ensureDefaultList() {
+  const lists = await dbGetAllLists();
+  if (lists.length === 0) {
+    const def = {
+      id: uuid(),
+      name: 'Lista principale',
+      createdAt: Date.now()
+    };
+    await dbPutList(def);
+  }
+}
+
+async function loadLists() {
+  let lists = await dbGetAllLists();
+  if (!lists || lists.length === 0) {
+    await ensureDefaultList();
+    lists = await dbGetAllLists();
+  }
+  lists.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+  listsCache = lists;
+  if (!currentListId || !listsCache.find(l => l.id === currentListId)) {
+    currentListId = listsCache[0].id;
+  }
+  updateListsSidebarUI();
+  updateCurrentListLabel();
+}
+
+async function createNewList() {
+  const name = (window.prompt('Nome nuova lista (es. Lidl, Ferramenta, Decathlon):') || '').trim();
+  if (!name) return;
+  const list = { id: uuid(), name, createdAt: Date.now() };
+  await dbPutList(list);
+  await loadLists();
+  currentListId = list.id;
+  updateListsSidebarUI();
+  updateCurrentListLabel();
+  render();
+}
+
+function updateCurrentListLabel() {
+  const cur = getCurrentList();
+  if (currentListNameEl) {
+    currentListNameEl.textContent = cur ? cur.name : '';
+  }
+}
+
+function updateListsSidebarUI() {
+  listsContainerEl.innerHTML = '';
+  const all = listsCache.slice();
+  if (all.length === 0) return;
+
+  // per ogni lista mostriamo nome + conteggio elementi (calcolato a parte in modo lazy)
+  all.forEach((l) => {
+    const btn = document.createElement('button');
+    btn.className = 'list-pill';
+    if (l.id === currentListId) btn.classList.add('active');
+    btn.dataset.id = l.id;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'name';
+    nameSpan.textContent = l.name;
+
+    const countSpan = document.createElement('span');
+    countSpan.className = 'count';
+    countSpan.textContent = ''; // popolata dopo da render(), opzionale
+
+    btn.appendChild(nameSpan);
+    btn.appendChild(countSpan);
+
+    // click normale → seleziona
+    btn.addEventListener('click', (e) => {
+      // se il click viene subito dopo un long-press, evitiamo doppio comportamento
+      if (btn._longPressHandled) {
+        btn._longPressHandled = false;
+        return;
+      }
+      currentListId = l.id;
+      updateListsSidebarUI();
+      updateCurrentListLabel();
+      closeSidebar();
+      render();
+    });
+
+    // tasto destro → menu azioni
+    btn.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      handleListAction(l);
+    });
+
+    // long press mobile
+    let pressTimer = null;
+    const startPress = (ev) => {
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = setTimeout(() => {
+        btn._longPressHandled = true;
+        handleListAction(l);
+      }, 600);
+    };
+    const cancelPress = () => {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+    btn.addEventListener('touchstart', startPress);
+    btn.addEventListener('touchend', cancelPress);
+    btn.addEventListener('touchmove', cancelPress);
+    btn.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; // solo sinistro per long press
+      startPress();
+    });
+    btn.addEventListener('mouseup', cancelPress);
+    btn.addEventListener('mouseleave', cancelPress);
+
+    listsContainerEl.appendChild(btn);
+  });
+}
+
+async function handleListAction(list) {
+  // Non permettiamo di eliminare l'ultima lista rimasta
+  if (listsCache.length === 1 && list.id === currentListId) {
+    const action = window.prompt(
+      `Lista: "${list.name}"\n\nPuoi solo rinominarla (è l'unica lista).\n\nScrivi:\n- r per rinominare\n- annulla per uscire`,
+      'r'
+    );
+    if (!action) return;
+    if (action.toLowerCase().startsWith('r')) {
+      await renameList(list);
+    }
+    return;
+  }
+
+  const action = window.prompt(
+    `Lista: "${list.name}"\n\nCosa vuoi fare?\n- r per rinominare\n- e per eliminare\n\n(scrivi r oppure e)`,
+    'r'
+  );
+  if (!action) return;
+  const a = action.trim().toLowerCase();
+  if (a.startsWith('r')) {
+    await renameList(list);
+  } else if (a.startsWith('e')) {
+    await deleteListFlow(list);
+  }
+}
+
+async function renameList(list) {
+  const nuovo = (window.prompt('Nuovo nome per la lista:', list.name) || '').trim();
+  if (!nuovo || nuovo === list.name) return;
+  list.name = nuovo;
+  await dbPutList(list);
+  await loadLists();
+  updateCurrentListLabel();
+  render();
+}
+
+async function deleteListFlow(list) {
+  const count = await dbCountTodosForList(list.id);
+  if (count > 0) {
+    const ok = window.confirm(
+      `La lista "${list.name}" contiene ${count} elementi.\nVuoi eliminarla comunque insieme ai suoi elementi?`
+    );
+    if (!ok) return;
+  }
+
+  // elimina tutti i todo della lista
+  const allTodos = await dbGetAllTodos();
+  const toDelete = allTodos.filter(t => t.listId === list.id);
+  for (const t of toDelete) {
+    await dbDeleteTodo(t.id);
+  }
+
+  // elimina lista
+  await dbDeleteList(list.id);
+
+  // ricarica liste e scegli una nuova lista corrente
+  await loadLists();
+  const cur = getCurrentList();
+  if (!cur && listsCache.length > 0) {
+    currentListId = listsCache[0].id;
+  }
+  updateCurrentListLabel();
+  render();
+}
+
+// ======================
+//  Sidebar open/close
+// ======================
+
+function openSidebar() {
+  sidebarEl.classList.add('open');
+  sidebarBackdropEl.classList.add('open');
+}
+
+function closeSidebar() {
+  sidebarEl.classList.remove('open');
+  sidebarBackdropEl.classList.remove('open');
+}
+
+sidebarToggleEl.addEventListener('click', openSidebar);
+sidebarCloseEl.addEventListener('click', closeSidebar);
+sidebarBackdropEl.addEventListener('click', closeSidebar);
+addListBtn.addEventListener('click', createNewList);
+
+// ======================
+//  Render lista TODO
+// ======================
+
 async function render() {
-  const items = await dbGetAll();
+  const allItems = await dbGetAllTodos();
+  const items = allItems.filter(t => t.listId === currentListId);
+  // ordina: non fatti in alto, fatti in basso
   items.sort((a, b) => (a.done === b.done) ? 0 : (a.done ? 1 : -1));
+
   listEl.innerHTML = '';
   countEl.textContent = String(items.length);
 
@@ -119,7 +406,7 @@ async function render() {
     textBtn.title = 'Segna fatto/da fare';
     textBtn.onclick = async () => {
       it.done = !it.done;
-      await dbPut(it);
+      await dbPutTodo(it);
       render();
     };
 
@@ -129,7 +416,10 @@ async function render() {
     delBtn.className = 'icon-btn';
     delBtn.setAttribute('aria-label', 'Elimina');
     delBtn.textContent = '🗑️';
-    delBtn.onclick = async () => { await dbDelete(it.id); render(); };
+    delBtn.onclick = async () => {
+      await dbDeleteTodo(it.id);
+      render();
+    };
     actions.appendChild(delBtn);
 
     rowTop.appendChild(textBtn);
@@ -143,7 +433,22 @@ async function render() {
     if (meta.textContent) li.appendChild(meta);
     listEl.appendChild(li);
   }
+
+  // aggiorna conteggi nelle "pillole" lista
+  const sidebarButtons = listsContainerEl.querySelectorAll('.list-pill');
+  sidebarButtons.forEach(btn => {
+    const id = btn.dataset.id;
+    const cnt = allItems.filter(t => t.listId === id).length;
+    const spanCount = btn.querySelector('.count');
+    if (spanCount) {
+      spanCount.textContent = cnt ? String(cnt) : '';
+    }
+  });
 }
+
+// ======================
+//  Form submit
+// ======================
 
 formEl.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -152,15 +457,28 @@ formEl.addEventListener('submit', async (e) => {
   const unit = (unitEl.value || '').trim();
   if (!text) return;
 
-  const item = { id: uuid(), text, done: false };
+  const item = {
+    id: uuid(),
+    listId: currentListId,
+    text,
+    done: false
+  };
   if (qty) item.qty = qty.replace(',', '.');
   if (unit) item.unit = unit;
 
-  await dbPut(item);
+  await dbPutTodo(item);
   inputEl.value = '';
   qtyEl.value = '';
   unitEl.value = '';
   render();
 });
 
-render();
+// ======================
+//  Init
+// ======================
+
+(async function init() {
+  await ensureDefaultList();
+  await loadLists();
+  await render();
+})();
