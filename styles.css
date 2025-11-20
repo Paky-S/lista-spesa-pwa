@@ -368,3 +368,66 @@ li.done .text-btn {
   font-size: .8rem;
   color: var(--muted);
 }
+
+/* ========= ACTION SHEET LISTE (Rinomina / Elimina) ========= */
+
+.action-menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: rgba(0,0,0,0.25);
+  opacity: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  transition: opacity .2s ease-out;
+}
+
+.action-menu-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.action-menu {
+  width: min(100% - 24px, 360px);
+  margin-bottom: calc(var(--safe-bottom) + 12px);
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+  padding: 10px 12px 8px;
+}
+
+.action-menu-title {
+  margin: 4px 4px 10px;
+  font-size: .9rem;
+  color: var(--muted);
+}
+
+.action-btn {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--field);
+  color: var(--ink);
+  font-size: .95rem;
+  padding: 8px 12px;
+  margin: 4px 0;
+  text-align: center;
+  cursor: pointer;
+}
+
+.action-btn.danger {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.action-btn.cancel {
+  margin-top: 6px;
+}
+
+.action-btn.disabled {
+  opacity: 0.5;
+  cursor: default;
+}

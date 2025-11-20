@@ -7,7 +7,7 @@
 const DB_NAME = 'lista_spesa_db';
 const TODO_STORE = 'todos';
 const LIST_STORE = 'lists';
-const VERSION = 2; // bump per introdurre le liste
+const VERSION = 2; // versione schema DB per le liste
 
 function openDB() {
   return new Promise((resolve, reject) => {
@@ -119,6 +119,14 @@ const MAX_QTY_DIGITS = 10;
 let currentListId = null;
 let listsCache = [];
 
+// Action sheet per le liste
+let actionMenuRoot = null;
+let actionMenuTitleEl = null;
+let actionMenuRenameBtn = null;
+let actionMenuDeleteBtn = null;
+let actionMenuCancelBtn = null;
+let actionMenuCurrentList = null;
+
 // ======================
 //  Helpers
 // ======================
@@ -171,6 +179,97 @@ function fmtMeta(item) {
 
 function getCurrentList() {
   return listsCache.find(l => l.id === currentListId) || null;
+}
+
+// ======================
+//  Action sheet per liste
+// ======================
+
+function ensureActionMenu() {
+  if (actionMenuRoot) return;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'action-menu-backdrop';
+
+  const menu = document.createElement('div');
+  menu.className = 'action-menu';
+
+  const title = document.createElement('p');
+  title.className = 'action-menu-title';
+
+  const btnRename = document.createElement('button');
+  btnRename.className = 'action-btn';
+  btnRename.textContent = 'Rinomina';
+
+  const btnDelete = document.createElement('button');
+  btnDelete.className = 'action-btn danger';
+  btnDelete.textContent = 'Elimina';
+
+  const btnCancel = document.createElement('button');
+  btnCancel.className = 'action-btn cancel';
+  btnCancel.textContent = 'Annulla';
+
+  menu.appendChild(title);
+  menu.appendChild(btnRename);
+  menu.appendChild(btnDelete);
+  menu.appendChild(btnCancel);
+
+  backdrop.appendChild(menu);
+  document.body.appendChild(backdrop);
+
+  actionMenuRoot = backdrop;
+  actionMenuTitleEl = title;
+  actionMenuRenameBtn = btnRename;
+  actionMenuDeleteBtn = btnDelete;
+  actionMenuCancelBtn = btnCancel;
+
+  // chiusura cliccando fuori
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) {
+      closeActionMenu();
+    }
+  });
+}
+
+function openListActionMenu(list) {
+  ensureActionMenu();
+  actionMenuCurrentList = list;
+  actionMenuTitleEl.textContent = `Lista: "${list.name}"`;
+
+  // se è l'unica lista, non permettiamo Elimina
+  if (listsCache.length === 1 && list.id === currentListId) {
+    actionMenuDeleteBtn.disabled = true;
+    actionMenuDeleteBtn.classList.add('disabled');
+  } else {
+    actionMenuDeleteBtn.disabled = false;
+    actionMenuDeleteBtn.classList.remove('disabled');
+  }
+
+  actionMenuRenameBtn.onclick = async () => {
+    const l = actionMenuCurrentList;
+    closeActionMenu();
+    if (l) await renameList(l);
+  };
+
+  actionMenuDeleteBtn.onclick = async () => {
+    const l = actionMenuCurrentList;
+    closeActionMenu();
+    if (l && !actionMenuDeleteBtn.disabled) {
+      await deleteListFlow(l);
+    }
+  };
+
+  actionMenuCancelBtn.onclick = () => {
+    closeActionMenu();
+  };
+
+  actionMenuRoot.classList.add('open');
+}
+
+function closeActionMenu() {
+  if (!actionMenuRoot) return;
+  actionMenuRoot.classList.remove('open');
+  actionMenuCurrentList = null;
 }
 
 // ======================
@@ -228,7 +327,6 @@ function updateListsSidebarUI() {
   const all = listsCache.slice();
   if (all.length === 0) return;
 
-  // per ogni lista mostriamo nome + conteggio elementi (calcolato a parte in modo lazy)
   all.forEach((l) => {
     const btn = document.createElement('button');
     btn.className = 'list-pill';
@@ -241,14 +339,13 @@ function updateListsSidebarUI() {
 
     const countSpan = document.createElement('span');
     countSpan.className = 'count';
-    countSpan.textContent = ''; // popolata dopo da render(), opzionale
+    countSpan.textContent = '';
 
     btn.appendChild(nameSpan);
     btn.appendChild(countSpan);
 
-    // click normale → seleziona
-    btn.addEventListener('click', (e) => {
-      // se il click viene subito dopo un long-press, evitiamo doppio comportamento
+    // click normale → seleziona lista
+    btn.addEventListener('click', () => {
       if (btn._longPressHandled) {
         btn._longPressHandled = false;
         return;
@@ -260,7 +357,7 @@ function updateListsSidebarUI() {
       render();
     });
 
-    // tasto destro → menu azioni
+    // tasto destro → menù azioni
     btn.addEventListener('contextmenu', (e) => {
       e.preventDefault();
       handleListAction(l);
@@ -268,7 +365,7 @@ function updateListsSidebarUI() {
 
     // long press mobile
     let pressTimer = null;
-    const startPress = (ev) => {
+    const startPress = () => {
       if (pressTimer) clearTimeout(pressTimer);
       pressTimer = setTimeout(() => {
         btn._longPressHandled = true;
@@ -285,7 +382,7 @@ function updateListsSidebarUI() {
     btn.addEventListener('touchend', cancelPress);
     btn.addEventListener('touchmove', cancelPress);
     btn.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return; // solo sinistro per long press
+      if (e.button !== 0) return;
       startPress();
     });
     btn.addEventListener('mouseup', cancelPress);
@@ -295,31 +392,9 @@ function updateListsSidebarUI() {
   });
 }
 
-async function handleListAction(list) {
-  // Non permettiamo di eliminare l'ultima lista rimasta
-  if (listsCache.length === 1 && list.id === currentListId) {
-    const action = window.prompt(
-      `Lista: "${list.name}"\n\nPuoi solo rinominarla (è l'unica lista).\n\nScrivi:\n- r per rinominare\n- annulla per uscire`,
-      'r'
-    );
-    if (!action) return;
-    if (action.toLowerCase().startsWith('r')) {
-      await renameList(list);
-    }
-    return;
-  }
-
-  const action = window.prompt(
-    `Lista: "${list.name}"\n\nCosa vuoi fare?\n- r per rinominare\n- e per eliminare\n\n(scrivi r oppure e)`,
-    'r'
-  );
-  if (!action) return;
-  const a = action.trim().toLowerCase();
-  if (a.startsWith('r')) {
-    await renameList(list);
-  } else if (a.startsWith('e')) {
-    await deleteListFlow(list);
-  }
+function handleListAction(list) {
+  // ora non chiediamo più "r/e": apriamo l'action sheet
+  openListActionMenu(list);
 }
 
 async function renameList(list) {
@@ -351,7 +426,7 @@ async function deleteListFlow(list) {
   // elimina lista
   await dbDeleteList(list.id);
 
-  // ricarica liste e scegli una nuova lista corrente
+  // ricarica liste e scegli nuova lista corrente
   await loadLists();
   const cur = getCurrentList();
   if (!cur && listsCache.length > 0) {
@@ -387,7 +462,6 @@ addListBtn.addEventListener('click', createNewList);
 async function render() {
   const allItems = await dbGetAllTodos();
   const items = allItems.filter(t => t.listId === currentListId);
-  // ordina: non fatti in alto, fatti in basso
   items.sort((a, b) => (a.done === b.done) ? 0 : (a.done ? 1 : -1));
 
   listEl.innerHTML = '';
@@ -434,7 +508,7 @@ async function render() {
     listEl.appendChild(li);
   }
 
-  // aggiorna conteggi nelle "pillole" lista
+  // aggiorna conteggi nelle pill delle liste
   const sidebarButtons = listsContainerEl.querySelectorAll('.list-pill');
   sidebarButtons.forEach(btn => {
     const id = btn.dataset.id;
@@ -482,3 +556,4 @@ formEl.addEventListener('submit', async (e) => {
   await loadLists();
   await render();
 })();
+d
