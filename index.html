@@ -8,7 +8,11 @@
 
   <!-- PWA -->
   <link rel="manifest" href="./manifest.json">
-  <meta name="theme-color" content="#0f172a">
+
+  <!-- Colore barra browser dinamico in base al tema -->
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f3f4f6">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a">
+
   <link rel="apple-touch-icon" href="./icons/icon-192.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -47,11 +51,12 @@
     <p class="hint small sw">Stato SW: <span id="sw-status">—</span></p>
   </main>
 
-  <!-- Carichiamo prima la config (APP_VERSION), poi l'app -->
+  <!-- Config: definisce APP_VERSION -->
   <script src="./config.js"></script>
+  <!-- Logica UI -->
   <script src="./app.js"></script>
 
-  <!-- Registrazione SW usando la versione di config.js -->
+  <!-- Registrazione SW usando APP_VERSION -->
   <script>
     (function () {
       const versionLabel = document.getElementById('version-label');
@@ -84,7 +89,6 @@
           });
 
           navigator.serviceWorker.addEventListener('controllerchange', () => {
-            // Nuovo SW attivo → ricarica automatica
             location.reload();
           });
 
