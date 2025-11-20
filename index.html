@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Lista Spesa (Offline)</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#0f172a">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>🛒 Lista Spesa</h1>
+    <p class="version small" id="version-label"></p>
+
+    <form id="add-form" class="add-form" autocomplete="off">
+      <input id="new-item" type="text" placeholder="Oggetto (es. Latte)" aria-label="Oggetto" />
+      <!-- qty come testo con tastiera numerica -->
+      <input id="qty" type="text" inputmode="decimal" placeholder="Qtà" aria-label="Quantità (opz.)" />
+      <select id="unit" aria-label="Unità (opz.)">
+        <option value="">Unità</option>
+        <option value="pz">pz</option>
+        <option value="kg">kg</option>
+        <option value="g">g</option>
+        <option value="Litri">Litri</option>
+        <option value="ml">ml</option>
+        <option value="confezione">confezione</option>
+        <option value="pacco">pacco</option>
+      </select>
+      <button type="submit" class="add-btn">Aggiungi</button>
+    </form>
+
+    <div class="section-head">
+      <span class="section-title">La tua lista</span>
+      <span class="badge" id="count">0</span>
+    </div>
+
+    <ul id="list" class="list"></ul>
+
+    <p class="hint small sw">Stato SW: <span id="sw-status">—</span></p>
+  </main>
+
+  <!-- Carichiamo prima la config (APP_VERSION), poi l'app -->
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+
+  <!-- Registrazione SW usando la versione di config.js -->
+  <script>
+    (function () {
+      const versionLabel = document.getElementById('version-label');
+      if (typeof APP_VERSION !== 'undefined' && versionLabel) {
+        versionLabel.textContent = 'VERSIONE BUILD: ' + APP_VERSION;
+      }
+
+      if (!('serviceWorker' in navigator) || typeof APP_VERSION === 'undefined') {
+        const swEl = document.getElementById('sw-status');
+        if (swEl) swEl.textContent = 'SW non supportato o versione non definita';
+        return;
+      }
+
+      const SW_VERSION = APP_VERSION;
+
+      navigator.serviceWorker
+        .register('./service-worker.js?v=' + encodeURIComponent(SW_VERSION))
+        .then((reg) => {
+          reg.update().catch(() => {});
+
+          if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+          reg.addEventListener('updatefound', () => {
+            const nw = reg.installing;
+            nw?.addEventListener('statechange', () => {
+              if (nw.state === 'installed' && navigator.serviceWorker.controller) {
+                reg.waiting?.postMessage({ type: 'SKIP_WAITING' });
+              }
+            });
+          });
+
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            // Nuovo SW attivo → ricarica automatica
+            location.reload();
+          });
+
+          const swEl = document.getElementById('sw-status');
+          if (swEl) swEl.textContent = 'Attivo ✅ ' + SW_VERSION;
+        })
+        .catch(() => {
+          const swEl = document.getElementById('sw-status');
+          if (swEl) swEl.textContent = 'SW non registrato ❌';
+        });
+    })();
+  </script>
+</body>
+</html>
