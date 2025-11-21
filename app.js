@@ -268,7 +268,7 @@ function updateListsSidebarUI() {
     btn.appendChild(nameSpan);
     btn.appendChild(countSpan);
 
-    // click singolo = seleziona lista (NON chiude sidebar, NON ricrea tutta la sidebar)
+    // click singolo = seleziona lista (NON chiude sidebar, NON ricrea sidebar)
     // doppio click/tap (entro soglia) = pannello comandi
     let clickTimeoutId = null;
     const dblClickThreshold = 280; // ms
@@ -282,7 +282,7 @@ function updateListsSidebarUI() {
         return;
       }
 
-      // primo click → aspettiamo un attimo per capire se arriva il secondo
+      // primo click → aspettiamo un attimo per vedere se arriva il secondo
       clickTimeoutId = setTimeout(() => {
         clickTimeoutId = null;
         // singolo click: seleziona lista
@@ -441,6 +441,15 @@ async function deleteListFlow(list) {
 function openSidebar() {
   sidebarEl.classList.add('open');
   sidebarBackdropEl.classList.add('open');
+
+  // evidenzia sempre la lista attiva
+  highlightActiveList();
+
+  // se la lista attiva è fuori vista, scrolla fino a lei
+  const active = listsContainerEl.querySelector('.list-pill.active');
+  if (active) {
+    active.scrollIntoView({ block: 'nearest' });
+  }
 }
 
 function closeSidebar() {

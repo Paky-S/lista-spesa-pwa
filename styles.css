@@ -1,18 +1,23 @@
 :root {
   color-scheme: light dark;
 
-  /* TEMA CHIARO (default) con accenti grigio/nero */
-  --bg: #f3f4f6;
-  --card: #ffffff;
-  --border: #d1d5db;
-  --ink: #111827;
-  --muted: #6b7280;
-  --field: #f9fafb;
-  --brand: #111827;      /* accento scuro, niente blu */
+  /* TEMA CHIARO (segue tema di sistema chiaro)
+     → UI SCURA (come volevi) */
+  --bg: #050505;
+  --card: #111111;
+  --border: #27272a;
+  --ink: #f5f5f5;
+  --muted: #a3a3a3;
+  --field: #18181b;
+  --brand: #27272a;
 
-  /* Pulsanti consigliati (Aggiungi, Nuova lista, Annulla) */
-  --cta-bg: #e5e5e5;
-  --cta-text: #111827;
+  /* Pulsanti consigliati in TEMA CHIARO:
+     sfondo SCURO quasi nero, testo CHIARO */
+  --cta-bg: #111111;
+  --cta-text: #f5f5f5;
+
+  /* Colore ben evidente per la lista selezionata */
+  --accent: #22c55e; /* verde acceso */
 
   --radius: 16px;
   --gap: 10px;
@@ -24,19 +29,25 @@
   --fs-2: clamp(16px, 2.2vw, 18px);
 }
 
-/* TEMA SCURO: scala grigi/nero */
+/* TEMA SCURO (segue tema di sistema scuro)
+   → UI CHIARA (inverso del tema chiaro) */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #050505;
-    --card: #111111;
-    --border: #27272a;
-    --ink: #f5f5f5;
-    --muted: #a3a3a3;
-    --field: #18181b;
-    --brand: #27272a;
+    --bg: #f3f4f6;
+    --card: #ffffff;
+    --border: #d1d5db;
+    --ink: #111827;
+    --muted: #6b7280;
+    --field: #f9fafb;
+    --brand: #111827;
 
-    --cta-bg: #e5e5e5;   /* chiaro anche in dark */
-    --cta-text: #111111; /* testo scuro, ben leggibile */
+    /* Pulsanti consigliati in TEMA SCURO:
+       sfondo chiaro, testo scuro (inverso) */
+    --cta-bg: #e5e5e5;
+    --cta-text: #111827;
+
+    /* accent resta vivace anche qui */
+    --accent: #16a34a;
   }
 }
 
@@ -165,7 +176,7 @@ select {
   background: var(--field);
 }
 
-/* Pulsante Aggiungi: CTA chiara */
+/* Pulsante Aggiungi: CTA (tema-dipendente via variabili) */
 .add-btn {
   background: var(--cta-bg);
   border: 1px solid var(--border);
@@ -368,12 +379,13 @@ li.done .text-btn {
   opacity: .7;
 }
 
+/* LISTA ATTIVA: contorno ben evidente */
 .list-pill.active {
-  border-color: var(--brand);
-  box-shadow: 0 0 0 1px rgba(0,0,0,0.18);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* BOTTONE NUOVA LISTA – CTA chiara */
+/* BOTTONE NUOVA LISTA – CTA */
 .add-list-btn {
   margin-top: 8px;
   width: 100%;
@@ -432,7 +444,7 @@ li.done .text-btn {
   color: var(--muted);
 }
 
-/* pulsanti sheet "normali" = scuri */
+/* pulsanti sheet "normali" = scuri/field */
 .sheet-btn {
   width: 100%;
   border: none;
@@ -454,7 +466,7 @@ li.done .text-btn {
   color: #ffffff;
 }
 
-/* Annulla = CTA chiara (sfondo chiaro / testo scuro) */
+/* Annulla = CTA (usa le stesse variabili dei pulsanti consigliati) */
 .sheet-btn-ghost {
   background: var(--cta-bg);
   color: var(--cta-text);
