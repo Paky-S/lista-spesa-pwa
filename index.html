@@ -34,7 +34,7 @@
     <button id="add-list-btn" class="add-list-btn">+ Nuova lista</button>
     <p class="sidebar-hint">
       • Tap normale: seleziona lista<br>
-      • Tap prolungato / tasto destro: rinomina o elimina
+      • Doppio tap / doppio click: rinomina, duplica, elimina
     </p>
   </aside>
 
@@ -44,6 +44,7 @@
     <div class="sheet-body">
       <p id="sheet-title" class="sheet-title"></p>
       <button id="sheet-rename-btn" class="sheet-btn">Rinomina</button>
+      <button id="sheet-duplicate-btn" class="sheet-btn">Duplica</button>
       <button id="sheet-delete-btn" class="sheet-btn sheet-btn-danger">Elimina</button>
       <button id="sheet-cancel-btn" class="sheet-btn sheet-btn-ghost">Annulla</button>
     </div>
@@ -85,11 +86,9 @@
     <ul id="list" class="list"></ul>
   </main>
 
-  <!-- FOOTER FUORI DAL MAIN -->
+  <!-- FOOTER FUORI DAL MAIN, IN BASSO A SINISTRA -->
   <footer class="app-footer">
-    <p class="small footer-line" id="version-label">
-      <!-- verrà sovrascritto da JS con APP_VERSION -->
-    </p>
+    <p class="small footer-line" id="version-label"></p>
     <p class="small footer-line">
       Stato SW: <span id="sw-status">SW non registrato ❌</span>
     </p>

@@ -118,6 +118,7 @@ const sheetEl = document.getElementById('list-action-sheet');
 const sheetBackdropEl = document.getElementById('list-action-sheet-backdrop');
 const sheetTitleEl = document.getElementById('sheet-title');
 const sheetRenameBtn = document.getElementById('sheet-rename-btn');
+const sheetDuplicateBtn = document.getElementById('sheet-duplicate-btn');
 const sheetDeleteBtn = document.getElementById('sheet-delete-btn');
 const sheetCancelBtn = document.getElementById('sheet-cancel-btn');
 
@@ -183,6 +184,18 @@ function getCurrentList() {
   return listsCache.find(l => l.id === currentListId) || null;
 }
 
+// Evidenzia la lista attiva senza ricreare tutta la sidebar
+function highlightActiveList() {
+  const buttons = listsContainerEl.querySelectorAll('.list-pill');
+  buttons.forEach(btn => {
+    if (btn.dataset.id === currentListId) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
+
 // ======================
 //  Liste: init e UI
 // ======================
@@ -221,7 +234,7 @@ async function createNewList() {
   await dbPutList(list);
   await loadLists();
   currentListId = list.id;
-  updateListsSidebarUI();
+  highlightActiveList();
   updateCurrentListLabel();
   render();
 }
@@ -255,49 +268,30 @@ function updateListsSidebarUI() {
     btn.appendChild(nameSpan);
     btn.appendChild(countSpan);
 
-    // click normale → seleziona
-    btn.addEventListener('click', (e) => {
-      if (btn._longPressHandled) {
-        btn._longPressHandled = false;
+    // click singolo = seleziona lista (NON chiude sidebar, NON ricrea tutta la sidebar)
+    // doppio click/tap (entro soglia) = pannello comandi
+    let clickTimeoutId = null;
+    const dblClickThreshold = 280; // ms
+
+    btn.addEventListener('click', () => {
+      if (clickTimeoutId !== null) {
+        // secondo click entro la soglia → doppio click
+        clearTimeout(clickTimeoutId);
+        clickTimeoutId = null;
+        handleListAction(l);
         return;
       }
-      currentListId = l.id;
-      updateListsSidebarUI();
-      updateCurrentListLabel();
-      closeSidebar();
-      render();
-    });
 
-    // tasto destro → menu azioni
-    btn.addEventListener('contextmenu', (e) => {
-      e.preventDefault();
-      handleListAction(l);
+      // primo click → aspettiamo un attimo per capire se arriva il secondo
+      clickTimeoutId = setTimeout(() => {
+        clickTimeoutId = null;
+        // singolo click: seleziona lista
+        currentListId = l.id;
+        highlightActiveList();
+        updateCurrentListLabel();
+        render();
+      }, dblClickThreshold);
     });
-
-    // long press mobile
-    let pressTimer = null;
-    const startPress = () => {
-      if (pressTimer) clearTimeout(pressTimer);
-      pressTimer = setTimeout(() => {
-        btn._longPressHandled = true;
-        handleListAction(l);
-      }, 600);
-    };
-    const cancelPress = () => {
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    };
-    btn.addEventListener('touchstart', startPress);
-    btn.addEventListener('touchend', cancelPress);
-    btn.addEventListener('touchmove', cancelPress);
-    btn.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return;
-      startPress();
-    });
-    btn.addEventListener('mouseup', cancelPress);
-    btn.addEventListener('mouseleave', cancelPress);
 
     listsContainerEl.appendChild(btn);
   });
@@ -350,6 +344,13 @@ sheetRenameBtn.addEventListener('click', async () => {
   await renameList(target);
 });
 
+sheetDuplicateBtn.addEventListener('click', async () => {
+  if (!sheetList) return;
+  const target = sheetList;
+  closeListActionSheet();
+  await duplicateList(target);
+});
+
 sheetDeleteBtn.addEventListener('click', async () => {
   if (!sheetList) return;
   if (!sheetCanDelete) {
@@ -367,6 +368,41 @@ async function renameList(list) {
   list.name = nuovo;
   await dbPutList(list);
   await loadLists();
+  highlightActiveList();
+  updateCurrentListLabel();
+  render();
+}
+
+async function duplicateList(list) {
+  const defaultName = list.name + ' (copia)';
+  const nuovoNome = (window.prompt('Nome per la copia della lista:', defaultName) || '').trim();
+  if (!nuovoNome) return;
+
+  const newList = {
+    id: uuid(),
+    name: nuovoNome,
+    createdAt: Date.now()
+  };
+  await dbPutList(newList);
+
+  const allTodos = await dbGetAllTodos();
+  const sourceTodos = allTodos.filter(t => t.listId === list.id);
+
+  for (const t of sourceTodos) {
+    const clone = {
+      id: uuid(),
+      listId: newList.id,
+      text: t.text,
+      done: false,
+      qty: t.qty,
+      unit: t.unit
+    };
+    await dbPutTodo(clone);
+  }
+
+  await loadLists();
+  currentListId = newList.id;
+  highlightActiveList();
   updateCurrentListLabel();
   render();
 }
@@ -393,6 +429,7 @@ async function deleteListFlow(list) {
   if (!cur && listsCache.length > 0) {
     currentListId = listsCache[0].id;
   }
+  highlightActiveList();
   updateCurrentListLabel();
   render();
 }
