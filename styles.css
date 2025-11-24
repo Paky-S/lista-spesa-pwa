@@ -1,23 +1,22 @@
 :root {
   color-scheme: light dark;
 
-  /* TEMA CHIARO (segue tema di sistema chiaro)
-     → UI SCURA (come volevi) */
-  --bg: #050505;
-  --card: #111111;
-  --border: #27272a;
-  --ink: #f5f5f5;
-  --muted: #a3a3a3;
-  --field: #18181b;
-  --brand: #27272a;
+  /* TEMA CHIARO (quando il sistema è chiaro) → APP CHIARA */
+  --bg: #f3f4f6;
+  --card: #ffffff;
+  --border: #d1d5db;
+  --ink: #111827;
+  --muted: #6b7280;
+  --field: #f9fafb;
+  --brand: #111827;
 
-  /* Pulsanti consigliati in TEMA CHIARO:
-     sfondo SCURO quasi nero, testo CHIARO */
+  /* Pulsanti IMPORTANTI in TEMA CHIARO:
+     sfondo NERO, testo BIANCO */
   --cta-bg: #111111;
-  --cta-text: #f5f5f5;
+  --cta-text: #f9fafb;
 
-  /* Colore ben evidente per la lista selezionata */
-  --accent: #22c55e; /* verde acceso */
+  /* Colore evidenziato per la lista selezionata */
+  --accent: #16a34a;
 
   --radius: 16px;
   --gap: 10px;
@@ -29,25 +28,23 @@
   --fs-2: clamp(16px, 2.2vw, 18px);
 }
 
-/* TEMA SCURO (segue tema di sistema scuro)
-   → UI CHIARA (inverso del tema chiaro) */
+/* TEMA SCURO (quando il sistema è scuro) → APP SCURA */
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #f3f4f6;
-    --card: #ffffff;
-    --border: #d1d5db;
-    --ink: #111827;
-    --muted: #6b7280;
-    --field: #f9fafb;
-    --brand: #111827;
+    --bg: #050505;
+    --card: #111111;
+    --border: #27272a;
+    --ink: #f5f5f5;
+    --muted: #a3a3a3;
+    --field: #18181b;
+    --brand: #27272a;
 
-    /* Pulsanti consigliati in TEMA SCURO:
-       sfondo chiaro, testo scuro (inverso) */
-    --cta-bg: #e5e5e5;
-    --cta-text: #111827;
+    /* Pulsanti IMPORTANTI in TEMA SCURO:
+       sfondo BIANCO, testo NERO */
+    --cta-bg: #f9fafb;
+    --cta-text: #111111;
 
-    /* accent resta vivace anche qui */
-    --accent: #16a34a;
+    --accent: #22c55e;
   }
 }
 
@@ -176,7 +173,7 @@ select {
   background: var(--field);
 }
 
-/* Pulsante Aggiungi: CTA (tema-dipendente via variabili) */
+/* Pulsante Aggiungi: USA le variabili CTA (cambia tra tema chiaro/scuro) */
 .add-btn {
   background: var(--cta-bg);
   border: 1px solid var(--border);
@@ -379,13 +376,13 @@ li.done .text-btn {
   opacity: .7;
 }
 
-/* LISTA ATTIVA: contorno ben evidente */
+/* LISTA ATTIVA: contorno ben evidente (accent) */
 .list-pill.active {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent);
 }
 
-/* BOTTONE NUOVA LISTA – CTA */
+/* BOTTONE NUOVA LISTA – USA CTA (importante) */
 .add-list-btn {
   margin-top: 8px;
   width: 100%;
@@ -444,7 +441,7 @@ li.done .text-btn {
   color: var(--muted);
 }
 
-/* pulsanti sheet "normali" = scuri/field */
+/* pulsanti sheet "normali" restano sullo stile FIELD */
 .sheet-btn {
   width: 100%;
   border: none;
@@ -466,7 +463,7 @@ li.done .text-btn {
   color: #ffffff;
 }
 
-/* Annulla = CTA (usa le stesse variabili dei pulsanti consigliati) */
+/* Annulla = pulsante IMPORTANTE → usa CTA */
 .sheet-btn-ghost {
   background: var(--cta-bg);
   color: var(--cta-text);
