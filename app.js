@@ -641,6 +641,49 @@ function showImportDialog(listName, itemCount) {
   });
 }
 
+// Trova un nome libero aggiungendo (2), (3), ... se già esiste
+function findFreeName(name, existingNames) {
+  if (!existingNames.includes(name)) return name;
+  let i = 2;
+  while (existingNames.includes(`${name} (${i})`)) i++;
+  return `${name} (${i})`;
+}
+
+// Dialog conflitto nomi — ritorna Promise<'replace'|'rename'|'cancel'>
+function showImportConflictDialog(originalName, proposedName) {
+  return new Promise((resolve) => {
+    const overlay     = document.getElementById('import-conflict-overlay');
+    const nameEl      = document.getElementById('import-conflict-name');
+    const renameBtn   = document.getElementById('import-conflict-rename');
+    const replaceBtn  = document.getElementById('import-conflict-replace');
+    const cancelBtn   = document.getElementById('import-conflict-cancel');
+
+    nameEl.textContent   = originalName;
+    renameBtn.textContent = `Importa come "${proposedName}"`;
+
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    function cleanup() {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      replaceBtn.removeEventListener('click', onReplace);
+      renameBtn.removeEventListener('click', onRename);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onBackdrop);
+    }
+    function onReplace()   { cleanup(); resolve('replace'); }
+    function onRename()    { cleanup(); resolve('rename');  }
+    function onCancel()    { cleanup(); resolve('cancel');  }
+    function onBackdrop(e) { if (e.target === overlay) onCancel(); }
+
+    replaceBtn.addEventListener('click', onReplace);
+    renameBtn.addEventListener('click', onRename);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onBackdrop);
+  });
+}
+
 // Controlla l'URL all'avvio e importa la lista se presente
 async function checkImportFromUrl() {
   const hash = window.location.hash;
@@ -662,13 +705,45 @@ async function checkImportFromUrl() {
   const confirmed = await showImportDialog(payload.name, payload.items.length);
   if (!confirmed) return;
 
-  const newList = { id: uuid(), name: payload.name, createdAt: Date.now() };
-  await dbPutList(newList);
+  // Controlla se esiste già una lista con lo stesso nome
+  const allLists   = await dbGetAllLists();
+  const allNames   = allLists.map(l => l.name);
+  const existing   = allLists.find(l => l.name === payload.name);
+  const freeName   = findFreeName(payload.name, allNames);
+
+  let targetListId;
+  let targetListName = payload.name;
+
+  if (existing) {
+    const choice = await showImportConflictDialog(payload.name, freeName);
+    if (choice === 'cancel') return;
+
+    if (choice === 'replace') {
+      // Elimina tutti gli articoli della lista esistente, riusa il suo ID
+      const allTodos = await dbGetAllTodos();
+      for (const t of allTodos.filter(t => t.listId === existing.id)) {
+        await dbDeleteTodo(t.id);
+      }
+      targetListId   = existing.id;
+      targetListName = existing.name;
+    } else {
+      // Crea nuova lista con nome libero (es. "Supermercato (2)")
+      targetListName = freeName;
+      const newList  = { id: uuid(), name: freeName, createdAt: Date.now() };
+      await dbPutList(newList);
+      targetListId   = newList.id;
+    }
+  } else {
+    // Nessun conflitto: crea nuova lista
+    const newList = { id: uuid(), name: payload.name, createdAt: Date.now() };
+    await dbPutList(newList);
+    targetListId  = newList.id;
+  }
 
   for (const item of payload.items) {
     const todo = {
       id:     uuid(),
-      listId: newList.id,
+      listId: targetListId,
       text:   (item.text || '').trim() || '(senza nome)',
       done:   item.done === true
     };
@@ -678,12 +753,12 @@ async function checkImportFromUrl() {
     await dbPutTodo(todo);
   }
 
-  currentListId = newList.id;
+  currentListId = targetListId;
   await loadLists();
   highlightActiveList();
   updateCurrentListLabel();
   render();
-  showToast(`✓ Lista "${newList.name}" importata (${payload.items.length} articoli)`);
+  showToast(`✓ Lista "${targetListName}" importata (${payload.items.length} articoli)`);
 }
 
 document.getElementById('share-btn').addEventListener('click', shareListAsUrl);

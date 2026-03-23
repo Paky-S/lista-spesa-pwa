@@ -1,4 +1,4 @@
-// service-worker.js
+// service-worker.js — v1.13.0
 
 // Importa la versione globale
 importScripts('./config.js');

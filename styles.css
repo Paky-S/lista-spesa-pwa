@@ -668,6 +668,17 @@ li.done .text-btn {
   font-weight: 600;
 }
 
+.import-conflict-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.import-conflict-actions .sheet-btn {
+  margin: 0;
+  width: 100%;
+}
+
 /* ========= STAMPA SCONTRINO IN-PAGE (no popup, funziona su iOS Safari) ========= */
 
 #print-receipt-area {

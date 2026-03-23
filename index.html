@@ -124,6 +124,23 @@
     </div>
   </div>
 
+  <!-- DIALOG CONFLITTO NOME LISTA -->
+  <div id="import-conflict-overlay" class="import-overlay" aria-hidden="true"
+       role="dialog" aria-modal="true" aria-labelledby="import-conflict-heading">
+    <div class="import-dialog-box">
+      <h3 id="import-conflict-heading" class="import-dialog-title">Lista già esistente ⚠️</h3>
+      <p class="import-dialog-body">
+        Esiste già una lista chiamata <strong id="import-conflict-name"></strong>.<br>
+        Cosa vuoi fare?
+      </p>
+      <div class="import-conflict-actions">
+        <button id="import-conflict-rename"  class="sheet-btn import-confirm-btn"></button>
+        <button id="import-conflict-replace" class="sheet-btn sheet-btn-danger">Sostituisci quella esistente</button>
+        <button id="import-conflict-cancel"  class="sheet-btn sheet-btn-ghost">Annulla</button>
+      </div>
+    </div>
+  </div>
+
   <!-- AREA STAMPA SCONTRINO (in-page, no popup — funziona su iOS Safari) -->
   <div id="print-receipt-area" aria-hidden="true"></div>
 
