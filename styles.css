@@ -53,7 +53,7 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body { height: 100%; }
+html, body { height: 100%; overflow-x: hidden; }
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -66,6 +66,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  max-width: 100%;
 }
 
 /* HEADER FUORI DAL MAIN */
@@ -171,6 +172,8 @@ select {
   appearance: auto;
   -webkit-appearance: menulist;
   background: var(--field);
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Pulsante Aggiungi: USA le variabili CTA (cambia tra tema chiaro/scuro) */
@@ -185,13 +188,36 @@ select {
 
 @media (max-width: 640px) {
   .add-form {
-    grid-template-columns: 1fr 1fr; /* due colonne */
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   #new-item {
     grid-column: span 2;
   }
-  .add-btn  {
+  .add-btn {
     grid-column: span 2;
+  }
+}
+
+/* Schermi molto piccoli (≤ 400px) */
+@media (max-width: 400px) {
+  body {
+    padding-left: 8px;
+    padding-right: 8px;
+  }
+  .card {
+    padding: 12px 8px;
+    border-radius: 12px;
+  }
+  .add-form {
+    margin: 6px 0 8px;
+    gap: 6px;
+  }
+  .list-title {
+    font-size: 1.05rem;
+    margin: 2px 4px 10px;
+  }
+  .app-header {
+    margin-bottom: 10px;
   }
 }
 
@@ -235,13 +261,14 @@ select {
 
 li {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   row-gap: 6px;
   align-items: start;
   background: var(--field);
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px;
+  min-width: 0;
 }
 
 .row-top {
@@ -256,6 +283,7 @@ li {
 .text-btn {
   display: block;
   width: 100%;
+  min-width: 0;
   background: transparent;
   border: none;
   color: var(--ink);
