@@ -556,68 +556,137 @@ function updateTotal(items) {
 }
 
 // ======================
-//  Condivisione lista
+//  Condivisione lista via URL (import/export)
 // ======================
 
-async function shareList() {
+async function shareListAsUrl() {
   const list = getCurrentList();
   if (!list) return;
 
   const allItems = await dbGetAllTodos();
   const items = allItems.filter(t => t.listId === currentListId);
-  const todo = items.filter(i => !i.done);
-  const done = items.filter(i => i.done);
 
-  const now = new Date();
-  const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const payload = {
+    v: 1,
+    name: list.name,
+    items: items.map(i => ({
+      text:  i.text,
+      done:  i.done,
+      qty:   i.qty   || '',
+      unit:  i.unit  || '',
+      price: i.price || ''
+    }))
+  };
 
-  let text = `🛒 Lista Spesa — ${list.name}\n📅 ${dateStr}\n`;
+  // btoa/unescape/encodeURIComponent: supporta Unicode, emoji, accenti su tutti i browser
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  const shareUrl = 'https://paky-s.github.io/lista-spesa-pwa/#import=' + b64;
 
-  if (todo.length > 0) {
-    text += '\nDa comprare:\n';
-    todo.forEach(i => {
-      text += `☐ ${i.text}`;
-      const meta = fmtMeta(i);
-      if (meta) text += ` (${meta})`;
-      text += '\n';
-    });
+  if (shareUrl.length > 2000) {
+    const ok = window.confirm(
+      `L'URL generato è lungo (${shareUrl.length} caratteri) e potrebbe non funzionare su alcuni messenger. Continuare?`
+    );
+    if (!ok) return;
   }
-
-  if (done.length > 0) {
-    text += '\nNel carrello:\n';
-    done.forEach(i => {
-      text += `✓ ${i.text}`;
-      const meta = fmtMeta(i);
-      if (meta) text += ` (${meta})`;
-      text += '\n';
-    });
-  }
-
-  const withPrice = items.filter(t => t.price && !isNaN(parseFloat(t.price)));
-  if (withPrice.length > 0) {
-    const sum = withPrice.reduce((acc, t) => acc + parseFloat(t.price), 0);
-    text += `\n💶 Totale stimato: € ${sum.toFixed(2).replace('.', ',')}\n`;
-  }
-
-  text += '\n—\nLista Spesa App';
 
   if (navigator.share) {
     try {
-      await navigator.share({ title: list.name, text });
+      await navigator.share({
+        title: 'Lista: ' + list.name,
+        text:  'Apri per importare la lista nella tua app Lista Spesa 🛒',
+        url:   shareUrl
+      });
     } catch (err) {
       if (err.name !== 'AbortError') showToast('Errore nella condivisione');
     }
   } else {
     try {
-      await navigator.clipboard.writeText(text);
-      showToast('✓ Lista copiata negli appunti');
+      await navigator.clipboard.writeText(shareUrl);
+      showToast('✓ Link copiato negli appunti');
     } catch {
-      showToast('Impossibile copiare');
+      showToast('Impossibile copiare il link');
     }
   }
 }
 
-document.getElementById('share-btn').addEventListener('click', shareList);
+// Dialog di conferma import — ritorna Promise<boolean>
+function showImportDialog(listName, itemCount) {
+  return new Promise((resolve) => {
+    const overlay    = document.getElementById('import-dialog-overlay');
+    const nameEl     = document.getElementById('import-dialog-name');
+    const countEl    = document.getElementById('import-dialog-count');
+    const confirmBtn = document.getElementById('import-dialog-confirm');
+    const cancelBtn  = document.getElementById('import-dialog-cancel');
+
+    nameEl.textContent  = listName;
+    countEl.textContent = itemCount === 1 ? '1 articolo' : `${itemCount} articoli`;
+
+    overlay.classList.add('open');
+    overlay.setAttribute('aria-hidden', 'false');
+
+    function cleanup() {
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      confirmBtn.removeEventListener('click', onConfirm);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onBackdrop);
+    }
+    function onConfirm()   { cleanup(); resolve(true);  }
+    function onCancel()    { cleanup(); resolve(false); }
+    function onBackdrop(e) { if (e.target === overlay) onCancel(); }
+
+    confirmBtn.addEventListener('click', onConfirm);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onBackdrop);
+  });
+}
+
+// Controlla l'URL all'avvio e importa la lista se presente
+async function checkImportFromUrl() {
+  const hash = window.location.hash;
+  if (!hash.startsWith('#import=')) return;
+
+  const b64 = hash.slice('#import='.length);
+  let payload;
+  try {
+    payload = JSON.parse(decodeURIComponent(escape(atob(b64))));
+  } catch {
+    // hash malformato: pulisci e ignora
+  }
+
+  // Pulisce SEMPRE l'hash per evitare re-import al reload
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  if (!payload || payload.v !== 1 || !payload.name || !Array.isArray(payload.items)) return;
+
+  const confirmed = await showImportDialog(payload.name, payload.items.length);
+  if (!confirmed) return;
+
+  const newList = { id: uuid(), name: payload.name, createdAt: Date.now() };
+  await dbPutList(newList);
+
+  for (const item of payload.items) {
+    const todo = {
+      id:     uuid(),
+      listId: newList.id,
+      text:   (item.text || '').trim() || '(senza nome)',
+      done:   item.done === true
+    };
+    if (item.qty)   todo.qty   = item.qty;
+    if (item.unit)  todo.unit  = item.unit;
+    if (item.price) todo.price = item.price;
+    await dbPutTodo(todo);
+  }
+
+  currentListId = newList.id;
+  await loadLists();
+  highlightActiveList();
+  updateCurrentListLabel();
+  render();
+  showToast(`✓ Lista "${newList.name}" importata (${payload.items.length} articoli)`);
+}
+
+document.getElementById('share-btn').addEventListener('click', shareListAsUrl);
 
 // ======================
 //  Scontrino PDF
@@ -636,145 +705,68 @@ async function printReceipt() {
 
   const withPrice = items.filter(t => t.price && !isNaN(parseFloat(t.price)));
   const total = withPrice.reduce((acc, t) => acc + parseFloat(t.price), 0);
-  const sep = '─'.repeat(36);
 
   function escHtml(s) {
-    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
   function fmtRow(item) {
-    const name = escHtml(item.text || '');
+    const name  = escHtml(item.text || '');
     const check = item.done ? '✓' : '☐';
-    const meta = [];
-    if (item.qty || item.unit) meta.push(((item.qty || '') + ' ' + (item.unit || '')).trim());
+    const meta  = (item.qty || item.unit)
+      ? ((item.qty || '') + ' ' + (item.unit || '')).trim()
+      : '';
     const priceStr = item.price && !isNaN(parseFloat(item.price))
       ? `€ ${parseFloat(item.price).toFixed(2).replace('.', ',')}`
       : '';
-    const metaStr = meta.join(' ');
     return `
-      <tr>
+      <tr${item.done ? ' class="done-row"' : ''}>
         <td class="col-check">${check}</td>
         <td class="col-name">${name}</td>
-        <td class="col-meta">${metaStr}</td>
+        <td class="col-meta">${meta}</td>
         <td class="col-price">${priceStr}</td>
       </tr>`;
   }
 
   const rows = items.map(fmtRow).join('');
 
-  const html = `<!DOCTYPE html>
-<html lang="it">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Scontrino — ${escHtml(list.name)}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: 'Courier New', Courier, monospace;
-    background: #fff;
-    color: #111;
-    display: flex;
-    justify-content: center;
-    padding: 24px 12px 40px;
-  }
-  .receipt {
-    width: 100%;
-    max-width: 380px;
-  }
-  .receipt-header {
-    text-align: center;
-    padding-bottom: 12px;
-    border-bottom: 2px dashed #aaa;
-    margin-bottom: 12px;
-  }
-  .receipt-logo { font-size: 2.2rem; }
-  .receipt-appname {
-    font-size: 1rem;
-    font-weight: bold;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    margin-top: 2px;
-  }
-  .receipt-listname {
-    font-size: 1.15rem;
-    font-weight: bold;
-    margin-top: 6px;
-  }
-  .receipt-meta {
-    font-size: .8rem;
-    color: #555;
-    margin-top: 4px;
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: .88rem;
-  }
-  td { padding: 4px 2px; vertical-align: top; }
-  .col-check { width: 18px; }
-  .col-name { width: 45%; }
-  .col-meta { width: 25%; color: #555; }
-  .col-price { width: 22%; text-align: right; font-weight: bold; }
-  tr.done-row td { color: #777; }
-  .sep {
-    border: none;
-    border-top: 1px dashed #aaa;
-    margin: 10px 0;
-  }
-  .total-row-receipt {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 2px 4px;
-    border-top: 2px solid #111;
-    margin-top: 6px;
-    font-size: 1.05rem;
-    font-weight: bold;
-  }
-  .footer {
-    text-align: center;
-    font-size: .75rem;
-    color: #888;
-    margin-top: 20px;
-    border-top: 1px dashed #aaa;
-    padding-top: 10px;
-  }
-  @media print {
-    body { padding: 0; }
-    @page { margin: 12mm; }
-  }
-</style>
-</head>
-<body>
-<div class="receipt">
-  <div class="receipt-header">
-    <div class="receipt-logo">🛒</div>
-    <div class="receipt-appname">Lista Spesa</div>
-    <div class="receipt-listname">${escHtml(list.name)}</div>
-    <div class="receipt-meta">${dateStr} · ${timeStr} · ${items.length} articol${items.length === 1 ? 'o' : 'i'}</div>
-  </div>
-  <table>
-    <tbody>${rows}</tbody>
-  </table>
-  ${withPrice.length > 0 ? `
-  <div class="total-row-receipt">
-    <span>TOTALE STIMATO</span>
-    <span>€ ${total.toFixed(2).replace('.', ',')}</span>
-  </div>` : ''}
-  <div class="footer">
-    Scontrino provvisorio · Lista Spesa App<br>
-    Generato il ${dateStr} alle ${timeStr}
-  </div>
-</div>
-<script>window.onload = function() { window.print(); }<\/script>
-</body>
-</html>`;
+  // Iniezione in-page: nessuna nuova finestra, nessun popup richiesto (funziona su iOS Safari)
+  const receiptHtml = `
+    <div class="receipt">
+      <div class="receipt-header">
+        <div class="receipt-logo">🛒</div>
+        <div class="receipt-appname">Lista Spesa</div>
+        <div class="receipt-listname">${escHtml(list.name)}</div>
+        <div class="receipt-meta">${dateStr} · ${timeStr} · ${items.length} articol${items.length === 1 ? 'o' : 'i'}</div>
+      </div>
+      <table><tbody>${rows}</tbody></table>
+      ${withPrice.length > 0 ? `
+      <div class="total-row-receipt">
+        <span>TOTALE STIMATO</span>
+        <span>€ ${total.toFixed(2).replace('.', ',')}</span>
+      </div>` : ''}
+      <div class="footer-receipt">
+        Scontrino provvisorio · Lista Spesa App<br>
+        Generato il ${dateStr} alle ${timeStr}
+      </div>
+    </div>`;
 
-  const w = window.open('', '_blank');
-  if (!w) { showToast('Abilita i popup per stampare'); return; }
-  w.document.write(html);
-  w.document.close();
+  const printArea = document.getElementById('print-receipt-area');
+  printArea.innerHTML = receiptHtml;
+
+  let cleaned = false;
+  function cleanupPrintArea() {
+    if (cleaned) return;
+    cleaned = true;
+    printArea.innerHTML = '';
+  }
+
+  // afterprint: supportato su tutti i browser moderni incluso iOS Safari 13+
+  window.addEventListener('afterprint', cleanupPrintArea, { once: true });
+  // Fallback per browser/WebView che non sparano afterprint
+  setTimeout(cleanupPrintArea, 4000);
+
+  window.print();
 }
 
 document.getElementById('print-receipt-btn').addEventListener('click', printReceipt);
@@ -817,5 +809,6 @@ formEl.addEventListener('submit', async (e) => {
 (async function init() {
   await ensureDefaultList();
   await loadLists();
+  await checkImportFromUrl(); // controlla se l'URL contiene una lista da importare
   await render();
 })();

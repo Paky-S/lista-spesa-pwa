@@ -596,3 +596,178 @@ li.done .text-btn {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* ========= DIALOG IMPORT LISTA DA URL ========= */
+
+.import-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease-out;
+}
+
+.import-overlay.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.import-dialog-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.30);
+  padding: 22px 18px 14px;
+  width: min(100%, 380px);
+  animation: dialog-in 0.18s ease-out;
+}
+
+@keyframes dialog-in {
+  from { transform: scale(0.95); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+
+.import-dialog-title {
+  margin: 0 0 10px;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.import-dialog-body {
+  margin: 0 0 18px;
+  font-size: .95rem;
+  line-height: 1.55;
+  color: var(--ink);
+}
+
+.import-dialog-count {
+  color: var(--muted);
+  font-size: .88rem;
+}
+
+.import-dialog-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.import-dialog-actions .sheet-btn {
+  flex: 1;
+  margin: 0;
+}
+
+.import-confirm-btn {
+  background: var(--accent) !important;
+  color: #ffffff !important;
+  border-color: var(--accent) !important;
+  font-weight: 600;
+}
+
+/* ========= STAMPA SCONTRINO IN-PAGE (no popup, funziona su iOS Safari) ========= */
+
+#print-receipt-area {
+  display: none; /* nascosto in modalità normale */
+}
+
+@media print {
+  /* Nasconde tutto tranne l'area scontrino */
+  body > *:not(#print-receipt-area) {
+    display: none !important;
+  }
+
+  #print-receipt-area {
+    display: block !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #111 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: block !important;
+    max-width: none !important;
+    font-family: 'Courier New', Courier, monospace;
+  }
+
+  @page { margin: 12mm; }
+
+  /* ---- Struttura scontrino ---- */
+  #print-receipt-area .receipt {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+  }
+
+  #print-receipt-area .receipt-header {
+    text-align: center;
+    padding-bottom: 12px;
+    border-bottom: 2px dashed #aaa;
+    margin-bottom: 12px;
+  }
+
+  #print-receipt-area .receipt-logo {
+    font-size: 2.2rem;
+  }
+
+  #print-receipt-area .receipt-appname {
+    font-size: 1rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  #print-receipt-area .receipt-listname {
+    font-size: 1.15rem;
+    font-weight: bold;
+    margin-top: 6px;
+  }
+
+  #print-receipt-area .receipt-meta {
+    font-size: .8rem;
+    color: #555;
+    margin-top: 4px;
+  }
+
+  #print-receipt-area table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+  }
+
+  #print-receipt-area td {
+    padding: 4px 2px;
+    vertical-align: top;
+  }
+
+  #print-receipt-area .col-check { width: 18px; }
+  #print-receipt-area .col-name  { width: 45%; }
+  #print-receipt-area .col-meta  { width: 25%; color: #555; }
+  #print-receipt-area .col-price { width: 22%; text-align: right; font-weight: bold; }
+  #print-receipt-area .done-row td { color: #777; }
+
+  #print-receipt-area .total-row-receipt {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 2px 4px;
+    border-top: 2px solid #111;
+    margin-top: 6px;
+    font-size: 1.05rem;
+    font-weight: bold;
+  }
+
+  #print-receipt-area .footer-receipt {
+    text-align: center;
+    font-size: .75rem;
+    color: #888;
+    margin-top: 20px;
+    border-top: 1px dashed #aaa;
+    padding-top: 10px;
+  }
+}

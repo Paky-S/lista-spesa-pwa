@@ -107,6 +107,26 @@
     </p>
   </footer>
 
+  <!-- DIALOG IMPORT LISTA DA URL -->
+  <div id="import-dialog-overlay" class="import-overlay" aria-hidden="true"
+       role="dialog" aria-modal="true" aria-labelledby="import-dialog-heading">
+    <div class="import-dialog-box">
+      <h3 id="import-dialog-heading" class="import-dialog-title">Importa lista 🛒</h3>
+      <p class="import-dialog-body">
+        Vuoi importare la lista <strong id="import-dialog-name"></strong>?<br>
+        <span id="import-dialog-count" class="import-dialog-count"></span>
+        verranno aggiunti alla tua app.
+      </p>
+      <div class="import-dialog-actions">
+        <button id="import-dialog-cancel"  class="sheet-btn sheet-btn-ghost">Annulla</button>
+        <button id="import-dialog-confirm" class="sheet-btn import-confirm-btn">Importa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- AREA STAMPA SCONTRINO (in-page, no popup — funziona su iOS Safari) -->
+  <div id="print-receipt-area" aria-hidden="true"></div>
+
   <!-- Config: definisce APP_VERSION -->
   <script src="./config.js"></script>
   <!-- Logica UI -->
