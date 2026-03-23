@@ -104,6 +104,11 @@ body {
   left: 0;
 }
 
+.share-btn {
+  position: absolute;
+  right: 0;
+}
+
 /* CARD PRINCIPALE */
 .card {
   width: min(100%, var(--maxw));
@@ -145,8 +150,8 @@ body {
 /* FORM IN ALTO – più adattivo sui mobile */
 .add-form {
   display: grid;
-  /* 4 colonne fluide, niente min-width rigide */
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.8fr) minmax(0, 0.9fr) auto;
+  /* 5 colonne fluide: testo, qtà, unità, prezzo, aggiungi */
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.7fr) minmax(0, 0.8fr) minmax(0, 0.7fr) auto;
   gap: var(--gap);
   margin: 10px 6px 10px;
 }
@@ -193,8 +198,9 @@ select {
   #new-item {
     grid-column: span 2;
   }
+  /* prezzo e aggiungi condividono l'ultima riga */
   .add-btn {
-    grid-column: span 2;
+    grid-column: unset;
   }
 }
 
@@ -218,6 +224,13 @@ select {
   }
   .app-header {
     margin-bottom: 10px;
+  }
+  /* su schermi molto piccoli il prezzo va a piena larghezza */
+  #price {
+    grid-column: span 2;
+  }
+  .add-btn {
+    grid-column: span 2;
   }
 }
 
@@ -311,6 +324,77 @@ li {
 li.done .text-btn {
   text-decoration: line-through;
   opacity: .78;
+}
+
+/* ========= SEZIONE TOTALE ========= */
+
+.total-section {
+  margin-top: 18px;
+  border-top: 1.5px solid var(--border);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.total-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4px;
+}
+
+.total-label {
+  font-weight: 600;
+  font-size: 1rem;
+  opacity: .85;
+}
+
+.total-amount {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.receipt-btn {
+  width: 100%;
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 14px;
+  font-size: var(--fs-2);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ========= TOAST ========= */
+
+.toast {
+  position: fixed;
+  bottom: calc(24px + var(--safe-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: var(--bg);
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: .92rem;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 99;
+  pointer-events: none;
+  animation: toast-in 0.18s ease-out, toast-out 0.3s ease-in 2.2s forwards;
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
 }
 
 /* ========= SIDEBAR LISTE ========= */

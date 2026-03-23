@@ -102,6 +102,7 @@ const formEl = document.getElementById('add-form');
 const inputEl = document.getElementById('new-item');
 const qtyEl = document.getElementById('qty');
 const unitEl = document.getElementById('unit');
+const priceEl = document.getElementById('price');
 const countEl = document.getElementById('count');
 const currentListNameEl = document.getElementById('current-list-name');
 
@@ -174,10 +175,19 @@ qtyEl.addEventListener('input', (e) => {
 function fmtMeta(item) {
   const q = (item.qty ?? '').toString().trim();
   const u = (item.unit ?? '').toString().trim();
-  if (!q && !u) return '';
-  if (q && u) return `${q} ${u}`;
-  if (q) return q;
-  return u;
+  const p = (item.price ?? '').toString().trim();
+  const quPart = q && u ? `${q} ${u}` : q || u;
+  const pricePart = p ? `€ ${parseFloat(p).toFixed(2).replace('.', ',')}` : '';
+  if (quPart && pricePart) return `${quPart} — ${pricePart}`;
+  return quPart || pricePart || '';
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
 }
 
 function getCurrentList() {
@@ -525,7 +535,249 @@ async function render() {
       spanCount.textContent = cnt ? String(cnt) : '';
     }
   });
+
+  updateTotal(items);
 }
+
+// ======================
+//  Totale
+// ======================
+
+function updateTotal(items) {
+  const totalSection = document.getElementById('total-section');
+  const withPrice = items.filter(t => t.price && !isNaN(parseFloat(t.price)));
+  if (withPrice.length === 0) {
+    totalSection.hidden = true;
+    return;
+  }
+  const sum = withPrice.reduce((acc, t) => acc + parseFloat(t.price), 0);
+  document.getElementById('total-amount').textContent = '€ ' + sum.toFixed(2).replace('.', ',');
+  totalSection.hidden = false;
+}
+
+// ======================
+//  Condivisione lista
+// ======================
+
+async function shareList() {
+  const list = getCurrentList();
+  if (!list) return;
+
+  const allItems = await dbGetAllTodos();
+  const items = allItems.filter(t => t.listId === currentListId);
+  const todo = items.filter(i => !i.done);
+  const done = items.filter(i => i.done);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  let text = `🛒 Lista Spesa — ${list.name}\n📅 ${dateStr}\n`;
+
+  if (todo.length > 0) {
+    text += '\nDa comprare:\n';
+    todo.forEach(i => {
+      text += `☐ ${i.text}`;
+      const meta = fmtMeta(i);
+      if (meta) text += ` (${meta})`;
+      text += '\n';
+    });
+  }
+
+  if (done.length > 0) {
+    text += '\nNel carrello:\n';
+    done.forEach(i => {
+      text += `✓ ${i.text}`;
+      const meta = fmtMeta(i);
+      if (meta) text += ` (${meta})`;
+      text += '\n';
+    });
+  }
+
+  const withPrice = items.filter(t => t.price && !isNaN(parseFloat(t.price)));
+  if (withPrice.length > 0) {
+    const sum = withPrice.reduce((acc, t) => acc + parseFloat(t.price), 0);
+    text += `\n💶 Totale stimato: € ${sum.toFixed(2).replace('.', ',')}\n`;
+  }
+
+  text += '\n—\nLista Spesa App';
+
+  if (navigator.share) {
+    try {
+      await navigator.share({ title: list.name, text });
+    } catch (err) {
+      if (err.name !== 'AbortError') showToast('Errore nella condivisione');
+    }
+  } else {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('✓ Lista copiata negli appunti');
+    } catch {
+      showToast('Impossibile copiare');
+    }
+  }
+}
+
+document.getElementById('share-btn').addEventListener('click', shareList);
+
+// ======================
+//  Scontrino PDF
+// ======================
+
+async function printReceipt() {
+  const list = getCurrentList();
+  if (!list) return;
+
+  const allItems = await dbGetAllTodos();
+  const items = allItems.filter(t => t.listId === currentListId);
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const timeStr = now.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+
+  const withPrice = items.filter(t => t.price && !isNaN(parseFloat(t.price)));
+  const total = withPrice.reduce((acc, t) => acc + parseFloat(t.price), 0);
+  const sep = '─'.repeat(36);
+
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function fmtRow(item) {
+    const name = escHtml(item.text || '');
+    const check = item.done ? '✓' : '☐';
+    const meta = [];
+    if (item.qty || item.unit) meta.push(((item.qty || '') + ' ' + (item.unit || '')).trim());
+    const priceStr = item.price && !isNaN(parseFloat(item.price))
+      ? `€ ${parseFloat(item.price).toFixed(2).replace('.', ',')}`
+      : '';
+    const metaStr = meta.join(' ');
+    return `
+      <tr>
+        <td class="col-check">${check}</td>
+        <td class="col-name">${name}</td>
+        <td class="col-meta">${metaStr}</td>
+        <td class="col-price">${priceStr}</td>
+      </tr>`;
+  }
+
+  const rows = items.map(fmtRow).join('');
+
+  const html = `<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Scontrino — ${escHtml(list.name)}</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background: #fff;
+    color: #111;
+    display: flex;
+    justify-content: center;
+    padding: 24px 12px 40px;
+  }
+  .receipt {
+    width: 100%;
+    max-width: 380px;
+  }
+  .receipt-header {
+    text-align: center;
+    padding-bottom: 12px;
+    border-bottom: 2px dashed #aaa;
+    margin-bottom: 12px;
+  }
+  .receipt-logo { font-size: 2.2rem; }
+  .receipt-appname {
+    font-size: 1rem;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+  .receipt-listname {
+    font-size: 1.15rem;
+    font-weight: bold;
+    margin-top: 6px;
+  }
+  .receipt-meta {
+    font-size: .8rem;
+    color: #555;
+    margin-top: 4px;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+  }
+  td { padding: 4px 2px; vertical-align: top; }
+  .col-check { width: 18px; }
+  .col-name { width: 45%; }
+  .col-meta { width: 25%; color: #555; }
+  .col-price { width: 22%; text-align: right; font-weight: bold; }
+  tr.done-row td { color: #777; }
+  .sep {
+    border: none;
+    border-top: 1px dashed #aaa;
+    margin: 10px 0;
+  }
+  .total-row-receipt {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 2px 4px;
+    border-top: 2px solid #111;
+    margin-top: 6px;
+    font-size: 1.05rem;
+    font-weight: bold;
+  }
+  .footer {
+    text-align: center;
+    font-size: .75rem;
+    color: #888;
+    margin-top: 20px;
+    border-top: 1px dashed #aaa;
+    padding-top: 10px;
+  }
+  @media print {
+    body { padding: 0; }
+    @page { margin: 12mm; }
+  }
+</style>
+</head>
+<body>
+<div class="receipt">
+  <div class="receipt-header">
+    <div class="receipt-logo">🛒</div>
+    <div class="receipt-appname">Lista Spesa</div>
+    <div class="receipt-listname">${escHtml(list.name)}</div>
+    <div class="receipt-meta">${dateStr} · ${timeStr} · ${items.length} articol${items.length === 1 ? 'o' : 'i'}</div>
+  </div>
+  <table>
+    <tbody>${rows}</tbody>
+  </table>
+  ${withPrice.length > 0 ? `
+  <div class="total-row-receipt">
+    <span>TOTALE STIMATO</span>
+    <span>€ ${total.toFixed(2).replace('.', ',')}</span>
+  </div>` : ''}
+  <div class="footer">
+    Scontrino provvisorio · Lista Spesa App<br>
+    Generato il ${dateStr} alle ${timeStr}
+  </div>
+</div>
+<script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  if (!w) { showToast('Abilita i popup per stampare'); return; }
+  w.document.write(html);
+  w.document.close();
+}
+
+document.getElementById('print-receipt-btn').addEventListener('click', printReceipt);
 
 // ======================
 //  Form submit
@@ -536,6 +788,8 @@ formEl.addEventListener('submit', async (e) => {
   const text = (inputEl.value || '').trim();
   const qty = sanitizeQtyInput(qtyEl.value || '').trim();
   const unit = (unitEl.value || '').trim();
+  const priceRaw = (priceEl.value || '').trim().replace(',', '.');
+  const price = priceRaw && !isNaN(parseFloat(priceRaw)) ? String(parseFloat(priceRaw)) : '';
   if (!text) return;
 
   const item = {
@@ -546,11 +800,13 @@ formEl.addEventListener('submit', async (e) => {
   };
   if (qty) item.qty = qty.replace(',', '.');
   if (unit) item.unit = unit;
+  if (price) item.price = price;
 
   await dbPutTodo(item);
   inputEl.value = '';
   qtyEl.value = '';
   unitEl.value = '';
+  priceEl.value = '';
   render();
 });
 

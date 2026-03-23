@@ -56,6 +56,9 @@
       ☰
     </button>
     <h1 class="app-title">Lista Spesa</h1>
+    <button id="share-btn" class="icon-btn share-btn" aria-label="Condividi lista">
+      📤
+    </button>
   </header>
 
   <!-- CONTENUTO PRINCIPALE (SOLO LISTA) -->
@@ -75,6 +78,7 @@
         <option value="confezione">confezione</option>
         <option value="pacco">pacco</option>
       </select>
+      <input id="price" type="text" inputmode="decimal" placeholder="€ Prezzo" aria-label="Prezzo (opz.)" />
       <button type="submit" class="add-btn">Aggiungi</button>
     </form>
 
@@ -84,6 +88,15 @@
     </div>
 
     <ul id="list" class="list"></ul>
+
+    <!-- TOTALE (visibile solo se almeno un articolo ha un prezzo) -->
+    <div id="total-section" class="total-section" hidden>
+      <div class="total-row">
+        <span class="total-label">Totale stimato</span>
+        <span id="total-amount" class="total-amount">€ 0,00</span>
+      </div>
+      <button id="print-receipt-btn" class="receipt-btn">🧾 Scontrino</button>
+    </div>
   </main>
 
   <!-- FOOTER FUORI DAL MAIN, IN BASSO A SINISTRA -->
