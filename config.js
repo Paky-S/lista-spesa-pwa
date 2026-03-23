@@ -9,5 +9,5 @@
 // Usa il formato che ti piace: basta che cambi il valore.
 
 (function (global) {
-  global.APP_VERSION = 'v1.13.0';
+  global.APP_VERSION = 'v1.14.0';
 })(typeof self !== 'undefined' ? self : this);

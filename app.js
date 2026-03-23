@@ -578,18 +578,16 @@ async function shareListAsUrl() {
     }))
   };
 
-  // btoa/unescape/encodeURIComponent: supporta Unicode, emoji, accenti su tutti i browser
-  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+  // Base64 URL-safe: evita +, /, = che possono essere troncati da alcuni messenger
+  const b64 = btoa(unescape(encodeURIComponent(JSON.stringify(payload))))
+    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
   const shareUrl = 'https://paky-s.github.io/lista-spesa-pwa/#import=' + b64;
 
-  if (shareUrl.length > 2000) {
-    const ok = window.confirm(
-      `L'URL generato è lungo (${shareUrl.length} caratteri) e potrebbe non funzionare su alcuni messenger. Continuare?`
-    );
-    if (!ok) return;
-  }
+  // Su mobile usa Web Share API (apre WhatsApp, SMS, ecc.)
+  // Su desktop usa sempre gli appunti (navigator.share desktop è inaffidabile)
+  const isMobile = navigator.maxTouchPoints > 0 && /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-  if (navigator.share) {
+  if (isMobile && navigator.share) {
     try {
       await navigator.share({
         title: 'Lista: ' + list.name,
@@ -597,15 +595,23 @@ async function shareListAsUrl() {
         url:   shareUrl
       });
     } catch (err) {
-      if (err.name !== 'AbortError') showToast('Errore nella condivisione');
+      if (err.name !== 'AbortError') {
+        // fallback a clipboard se share mobile fallisce
+        await _copyToClipboard(shareUrl);
+      }
     }
   } else {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      showToast('✓ Link copiato negli appunti');
-    } catch {
-      showToast('Impossibile copiare il link');
-    }
+    await _copyToClipboard(shareUrl);
+  }
+}
+
+async function _copyToClipboard(text) {
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast('✓ Link copiato negli appunti');
+  } catch {
+    // Fallback: prompt() per copiare manualmente
+    window.prompt('Copia il link e invialo:', text);
   }
 }
 
@@ -621,10 +627,12 @@ function showImportDialog(listName, itemCount) {
     nameEl.textContent  = listName;
     countEl.textContent = itemCount === 1 ? '1 articolo' : `${itemCount} articoli`;
 
+    overlay.style.display = 'flex';
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden', 'false');
 
     function cleanup() {
+      overlay.style.display = 'none';
       overlay.classList.remove('open');
       overlay.setAttribute('aria-hidden', 'true');
       confirmBtn.removeEventListener('click', onConfirm);
@@ -661,10 +669,12 @@ function showImportConflictDialog(originalName, proposedName) {
     nameEl.textContent   = originalName;
     renameBtn.textContent = `Importa come "${proposedName}"`;
 
+    overlay.style.display = 'flex';
     overlay.classList.add('open');
     overlay.setAttribute('aria-hidden', 'false');
 
     function cleanup() {
+      overlay.style.display = 'none';
       overlay.classList.remove('open');
       overlay.setAttribute('aria-hidden', 'true');
       replaceBtn.removeEventListener('click', onReplace);
@@ -689,10 +699,13 @@ async function checkImportFromUrl() {
   const hash = window.location.hash;
   if (!hash.startsWith('#import=')) return;
 
-  const b64 = hash.slice('#import='.length);
+  const b64raw = hash.slice('#import='.length);
   let payload;
   try {
-    payload = JSON.parse(decodeURIComponent(escape(atob(b64))));
+    // Ripristina base64 standard da URL-safe (- → +, _ → /, aggiunge padding)
+    const b64 = b64raw.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    payload = JSON.parse(decodeURIComponent(escape(atob(padded))));
   } catch {
     // hash malformato: pulisci e ignora
   }

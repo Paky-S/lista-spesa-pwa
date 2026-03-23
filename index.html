@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <link rel="stylesheet" href="./styles.css?v=1.13.0" />
+  <link rel="stylesheet" href="./styles.css?v=1.14.0" />
 </head>
 <body>
 
@@ -109,7 +109,8 @@
 
   <!-- DIALOG IMPORT LISTA DA URL -->
   <div id="import-dialog-overlay" class="import-overlay" aria-hidden="true"
-       role="dialog" aria-modal="true" aria-labelledby="import-dialog-heading">
+       role="dialog" aria-modal="true" aria-labelledby="import-dialog-heading"
+       style="display:none">
     <div class="import-dialog-box">
       <h3 id="import-dialog-heading" class="import-dialog-title">Importa lista 🛒</h3>
       <p class="import-dialog-body">
@@ -126,7 +127,8 @@
 
   <!-- DIALOG CONFLITTO NOME LISTA -->
   <div id="import-conflict-overlay" class="import-overlay" aria-hidden="true"
-       role="dialog" aria-modal="true" aria-labelledby="import-conflict-heading">
+       role="dialog" aria-modal="true" aria-labelledby="import-conflict-heading"
+       style="display:none">
     <div class="import-dialog-box">
       <h3 id="import-conflict-heading" class="import-dialog-title">Lista già esistente ⚠️</h3>
       <p class="import-dialog-body">
@@ -145,9 +147,9 @@
   <div id="print-receipt-area" aria-hidden="true"></div>
 
   <!-- Config: definisce APP_VERSION -->
-  <script src="./config.js?v=1.13.0"></script>
+  <script src="./config.js?v=1.14.0"></script>
   <!-- Logica UI -->
-  <script src="./app.js?v=1.13.0"></script>
+  <script src="./app.js?v=1.14.0"></script>
 
   <!-- Registrazione SW usando APP_VERSION -->
   <script>
