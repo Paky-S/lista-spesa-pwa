@@ -56,9 +56,10 @@
       ☰
     </button>
     <h1 class="app-title">Lista Spesa</h1>
-    <button id="share-btn" class="icon-btn share-btn" aria-label="Condividi lista">
-      📤
-    </button>
+    <div class="header-right">
+      <button id="clipboard-import-btn" class="icon-btn" aria-label="Importa da link copiato" title="Importa da link copiato">📋</button>
+      <button id="share-btn" class="icon-btn" aria-label="Condividi lista">📤</button>
+    </div>
   </header>
 
   <!-- CONTENUTO PRINCIPALE (SOLO LISTA) -->
@@ -118,7 +119,10 @@
         <span id="import-dialog-count" class="import-dialog-count"></span>
         verranno aggiunti alla tua app.
       </p>
-      <p id="import-dialog-hint" class="import-dialog-hint" hidden></p>
+      <div id="import-dialog-hint" class="import-dialog-hint" hidden>
+        <span id="import-dialog-hint-text"></span>
+        <button id="import-copy-link-btn" class="sheet-btn import-copy-btn" hidden>📋 Copia link</button>
+      </div>
       <div class="import-dialog-actions">
         <button id="import-dialog-cancel"  class="sheet-btn sheet-btn-ghost">Annulla</button>
         <button id="import-dialog-confirm" class="sheet-btn import-confirm-btn">Importa</button>

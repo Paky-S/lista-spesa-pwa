@@ -625,26 +625,39 @@ async function _copyToClipboard(text) {
 }
 
 // Dialog di conferma import — ritorna Promise<boolean>
-function showImportDialog(listName, itemCount) {
+// shareUrl: URL originale con #import= (opzionale, per mostrare tasto "Copia link" su iOS browser)
+function showImportDialog(listName, itemCount, shareUrl) {
   return new Promise((resolve) => {
-    const overlay    = document.getElementById('import-dialog-overlay');
-    const nameEl     = document.getElementById('import-dialog-name');
-    const countEl    = document.getElementById('import-dialog-count');
-    const confirmBtn = document.getElementById('import-dialog-confirm');
-    const cancelBtn  = document.getElementById('import-dialog-cancel');
-    const hintEl     = document.getElementById('import-dialog-hint');
+    const overlay      = document.getElementById('import-dialog-overlay');
+    const nameEl       = document.getElementById('import-dialog-name');
+    const countEl      = document.getElementById('import-dialog-count');
+    const confirmBtn   = document.getElementById('import-dialog-confirm');
+    const cancelBtn    = document.getElementById('import-dialog-cancel');
+    const hintEl       = document.getElementById('import-dialog-hint');
+    const hintTextEl   = document.getElementById('import-dialog-hint-text');
+    const copyLinkBtn  = document.getElementById('import-copy-link-btn');
 
     nameEl.textContent  = listName;
     countEl.textContent = itemCount === 1 ? '1 articolo' : `${itemCount} articoli`;
 
-    // Mostra un suggerimento se l'utente è nel browser (non nella PWA installata)
+    // Mostra hint se nel browser (non PWA standalone)
     if (hintEl) {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches || !!window.navigator.standalone;
       if (!isStandalone) {
-        hintEl.textContent = 'Stai usando il browser. Se hai l\'app installata, aprila dalla home e usa di nuovo questo link per importare direttamente nell\'app.';
+        if (hintTextEl) hintTextEl.textContent = 'Hai l\'app installata? Copia il link e aprila — usa 📋 nell\'header per importare direttamente.';
+        if (copyLinkBtn && shareUrl) {
+          copyLinkBtn.textContent = '📋 Copia link';
+          copyLinkBtn.hidden = false;
+          copyLinkBtn.onclick = () => _copyToClipboard(shareUrl).then(() => {
+            copyLinkBtn.textContent = '✓ Link copiato!';
+          });
+        } else if (copyLinkBtn) {
+          copyLinkBtn.hidden = true;
+        }
         hintEl.hidden = false;
       } else {
         hintEl.hidden = true;
+        if (copyLinkBtn) copyLinkBtn.hidden = true;
       }
     }
 
@@ -715,31 +728,8 @@ function showImportConflictDialog(originalName, proposedName) {
   });
 }
 
-// Controlla l'URL all'avvio e importa la lista se presente
-async function checkImportFromUrl() {
-  const hash = window.location.hash;
-  if (!hash.startsWith('#import=')) return;
-
-  const b64raw = hash.slice('#import='.length);
-  let payload;
-  try {
-    // Ripristina base64 standard da URL-safe (- → +, _ → /, aggiunge padding)
-    const b64 = b64raw.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
-    payload = JSON.parse(decodeURIComponent(escape(atob(padded))));
-  } catch {
-    // hash malformato: pulisci e ignora
-  }
-
-  // Pulisce SEMPRE l'hash per evitare re-import al reload
-  history.replaceState(null, '', window.location.pathname + window.location.search);
-
-  if (!payload || payload.v !== 1 || !payload.name || !Array.isArray(payload.items)) return;
-
-  const confirmed = await showImportDialog(payload.name, payload.items.length);
-  if (!confirmed) return;
-
-  // Controlla se esiste già una lista con lo stesso nome
+// Logica condivisa di import payload (usata da checkImportFromUrl e importFromClipboard)
+async function processImportPayload(payload) {
   const allLists   = await dbGetAllLists();
   const allNames   = allLists.map(l => l.name);
   const existing   = allLists.find(l => l.name === payload.name);
@@ -753,7 +743,6 @@ async function checkImportFromUrl() {
     if (choice === 'cancel') return;
 
     if (choice === 'replace') {
-      // Elimina tutti gli articoli della lista esistente, riusa il suo ID
       const allTodos = await dbGetAllTodos();
       for (const t of allTodos.filter(t => t.listId === existing.id)) {
         await dbDeleteTodo(t.id);
@@ -761,14 +750,12 @@ async function checkImportFromUrl() {
       targetListId   = existing.id;
       targetListName = existing.name;
     } else {
-      // Crea nuova lista con nome libero (es. "Supermercato (2)")
       targetListName = freeName;
       const newList  = { id: uuid(), name: freeName, createdAt: Date.now() };
       await dbPutList(newList);
       targetListId   = newList.id;
     }
   } else {
-    // Nessun conflitto: crea nuova lista
     const newList = { id: uuid(), name: payload.name, createdAt: Date.now() };
     await dbPutList(newList);
     targetListId  = newList.id;
@@ -795,7 +782,73 @@ async function checkImportFromUrl() {
   showToast(`✓ Lista "${targetListName}" importata (${payload.items.length} articoli)`);
 }
 
+// Controlla l'URL all'avvio e importa la lista se presente
+async function checkImportFromUrl() {
+  const hash = window.location.hash;
+  if (!hash.startsWith('#import=')) return;
+
+  const originalUrl = window.location.href; // salva prima di pulire l'hash
+  const b64raw = hash.slice('#import='.length);
+  let payload;
+  try {
+    const b64 = b64raw.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    payload = JSON.parse(decodeURIComponent(escape(atob(padded))));
+  } catch {
+    // hash malformato: ignora
+  }
+
+  // Pulisce SEMPRE l'hash per evitare re-import al reload
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+
+  if (!payload || payload.v !== 1 || !payload.name || !Array.isArray(payload.items)) return;
+
+  const confirmed = await showImportDialog(payload.name, payload.items.length, originalUrl);
+  if (!confirmed) return;
+
+  await processImportPayload(payload);
+}
+
+// Importa una lista dal link copiato negli appunti (soluzione iOS PWA)
+async function importFromClipboard() {
+  let text = '';
+  try {
+    text = await navigator.clipboard.readText();
+  } catch {
+    showToast('Permesso appunti negato — incolla manualmente il link nella barra del browser');
+    return;
+  }
+
+  const match = text.match(/#import=([A-Za-z0-9\-_]+)/);
+  if (!match) {
+    showToast('Nessun link Lista Spesa trovato negli appunti');
+    return;
+  }
+
+  let payload;
+  try {
+    const b64raw = match[1];
+    const b64 = b64raw.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = b64 + '='.repeat((4 - b64.length % 4) % 4);
+    payload = JSON.parse(decodeURIComponent(escape(atob(padded))));
+  } catch {
+    showToast('Link non valido o corrotto');
+    return;
+  }
+
+  if (!payload || payload.v !== 1 || !payload.name || !Array.isArray(payload.items)) {
+    showToast('Link non valido o corrotto');
+    return;
+  }
+
+  const confirmed = await showImportDialog(payload.name, payload.items.length);
+  if (!confirmed) return;
+
+  await processImportPayload(payload);
+}
+
 document.getElementById('share-btn').addEventListener('click', shareListAsUrl);
+document.getElementById('clipboard-import-btn').addEventListener('click', importFromClipboard);
 
 // ======================
 //  Scontrino PDF
