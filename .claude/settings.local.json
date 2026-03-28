@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh api:*)",
+      "Bash(curl -s \"https://paky-s.github.io/lista-spesa-pwa/config.js\")",
+      "Bash(curl -s \"https://paky-s.github.io/lista-spesa-pwa/app.js\")",
+      "Bash(curl -s \"https://paky-s.github.io/lista-spesa-pwa/index.html\")"
+    ]
+  }
+}
