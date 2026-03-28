@@ -130,6 +130,7 @@ let currentListId = null;
 let listsCache = [];
 let sheetList = null;
 let sheetCanDelete = false;
+let editingItemId = null;
 
 // ======================
 //  Helpers
@@ -503,6 +504,14 @@ async function render() {
 
     const actions = document.createElement('div');
     actions.className = 'actions';
+
+    const editBtn = document.createElement('button');
+    editBtn.className = 'icon-btn';
+    editBtn.setAttribute('aria-label', 'Modifica');
+    editBtn.textContent = '✏️';
+    editBtn.onclick = () => openEditModal(it);
+    actions.appendChild(editBtn);
+
     const delBtn = document.createElement('button');
     delBtn.className = 'icon-btn';
     delBtn.setAttribute('aria-label', 'Elimina');
@@ -623,9 +632,21 @@ function showImportDialog(listName, itemCount) {
     const countEl    = document.getElementById('import-dialog-count');
     const confirmBtn = document.getElementById('import-dialog-confirm');
     const cancelBtn  = document.getElementById('import-dialog-cancel');
+    const hintEl     = document.getElementById('import-dialog-hint');
 
     nameEl.textContent  = listName;
     countEl.textContent = itemCount === 1 ? '1 articolo' : `${itemCount} articoli`;
+
+    // Mostra un suggerimento se l'utente è nel browser (non nella PWA installata)
+    if (hintEl) {
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || !!window.navigator.standalone;
+      if (!isStandalone) {
+        hintEl.textContent = 'Stai usando il browser. Se hai l\'app installata, aprila dalla home e usa di nuovo questo link per importare direttamente nell\'app.';
+        hintEl.hidden = false;
+      } else {
+        hintEl.hidden = true;
+      }
+    }
 
     overlay.style.display = 'flex';
     overlay.classList.add('open');
@@ -780,6 +801,48 @@ document.getElementById('share-btn').addEventListener('click', shareListAsUrl);
 //  Scontrino PDF
 // ======================
 
+// Stili del receipt come stringa (usati nell'iframe per Android/Desktop)
+const RECEIPT_STYLES = `
+  body {
+    font-family: 'Courier New', Courier, monospace;
+    background: #fff;
+    color: #111;
+    margin: 0;
+    padding: 12mm;
+  }
+  @page { margin: 12mm; }
+  .receipt { width: 100%; max-width: 380px; margin: 0 auto; }
+  .receipt-header {
+    text-align: center;
+    padding-bottom: 12px;
+    border-bottom: 2px dashed #aaa;
+    margin-bottom: 12px;
+  }
+  .receipt-logo { font-size: 2.2rem; }
+  .receipt-appname {
+    font-size: 1rem; font-weight: bold;
+    letter-spacing: 2px; text-transform: uppercase; margin-top: 2px;
+  }
+  .receipt-listname { font-size: 1.15rem; font-weight: bold; margin-top: 6px; }
+  .receipt-meta { font-size: .8rem; color: #555; margin-top: 4px; }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  td { padding: 4px 2px; vertical-align: top; }
+  .col-check { width: 18px; }
+  .col-name  { width: 45%; }
+  .col-meta  { width: 25%; color: #555; }
+  .col-price { width: 22%; text-align: right; font-weight: bold; }
+  .done-row td { color: #777; }
+  .total-row-receipt {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 2px 4px; border-top: 2px solid #111;
+    margin-top: 6px; font-size: 1.05rem; font-weight: bold;
+  }
+  .footer-receipt {
+    text-align: center; font-size: .75rem; color: #888;
+    margin-top: 20px; border-top: 1px dashed #aaa; padding-top: 10px;
+  }
+`;
+
 async function printReceipt() {
   const list = getCurrentList();
   if (!list) return;
@@ -818,7 +881,6 @@ async function printReceipt() {
 
   const rows = items.map(fmtRow).join('');
 
-  // Iniezione in-page: nessuna nuova finestra, nessun popup richiesto (funziona su iOS Safari)
   const receiptHtml = `
     <div class="receipt">
       <div class="receipt-header">
@@ -839,25 +901,118 @@ async function printReceipt() {
       </div>
     </div>`;
 
-  const printArea = document.getElementById('print-receipt-area');
-  printArea.innerHTML = receiptHtml;
+  // iOS Safari non supporta la stampa da iframe → approccio in-page
+  // Android Chrome/Desktop usano iframe con stili inline (più affidabile su Android)
+  const isIOS = /iPhone|iPod/.test(navigator.userAgent) ||
+                /iPad/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-  let cleaned = false;
-  function cleanupPrintArea() {
-    if (cleaned) return;
-    cleaned = true;
-    printArea.innerHTML = '';
+  if (isIOS) {
+    // Approccio in-page: inietta nel div nascosto e usa @media print CSS
+    const printArea = document.getElementById('print-receipt-area');
+    printArea.innerHTML = receiptHtml;
+
+    let cleaned = false;
+    function cleanupPrintArea() {
+      if (cleaned) return;
+      cleaned = true;
+      printArea.innerHTML = '';
+    }
+
+    window.addEventListener('afterprint', cleanupPrintArea, { once: true });
+    setTimeout(cleanupPrintArea, 4000);
+    window.print();
+  } else {
+    // Approccio iframe: documento isolato con stili inline (risolve PDF bianco su Android)
+    const iframe = document.createElement('iframe');
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.style.cssText = 'position:fixed;left:-9999px;width:210mm;height:1px;border:none;';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><style>${RECEIPT_STYLES}</style></head><body>${receiptHtml}</body></html>`);
+    doc.close();
+
+    function removeIframe() {
+      try { document.body.removeChild(iframe); } catch (e) {}
+    }
+
+    iframe.contentWindow.addEventListener('afterprint', removeIframe, { once: true });
+    setTimeout(removeIframe, 5000);
+    // Piccolo delay per assicurare il render del documento iframe
+    setTimeout(() => iframe.contentWindow.print(), 100);
   }
-
-  // afterprint: supportato su tutti i browser moderni incluso iOS Safari 13+
-  window.addEventListener('afterprint', cleanupPrintArea, { once: true });
-  // Fallback per browser/WebView che non sparano afterprint
-  setTimeout(cleanupPrintArea, 4000);
-
-  window.print();
 }
 
 document.getElementById('print-receipt-btn').addEventListener('click', printReceipt);
+
+// ======================
+//  Modifica prodotto
+// ======================
+
+function openEditModal(item) {
+  editingItemId = item.id;
+  document.getElementById('edit-item-text').value  = item.text  || '';
+  document.getElementById('edit-item-qty').value   = item.qty   || '';
+  document.getElementById('edit-item-unit').value  = item.unit  || '';
+  document.getElementById('edit-item-price').value = item.price ? parseFloat(item.price).toFixed(2).replace('.', ',') : '';
+  const overlay = document.getElementById('edit-item-overlay');
+  overlay.style.display = 'flex';
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.getElementById('edit-item-text').focus();
+}
+
+function closeEditModal() {
+  editingItemId = null;
+  const overlay = document.getElementById('edit-item-overlay');
+  overlay.style.display = 'none';
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+// Validazione quantità anche nel form di modifica
+document.getElementById('edit-item-qty').addEventListener('input', (e) => {
+  const val = e.target.value;
+  const san = sanitizeQtyInput(val);
+  if (san !== val) {
+    const pos = e.target.selectionStart;
+    e.target.value = san;
+    try {
+      const delta = val.length - san.length;
+      e.target.setSelectionRange(pos - delta, pos - delta);
+    } catch {}
+  }
+});
+
+document.getElementById('edit-item-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!editingItemId) return;
+  const allItems = await dbGetAllTodos();
+  const item = allItems.find(i => i.id === editingItemId);
+  if (!item) return;
+
+  const newText = document.getElementById('edit-item-text').value.trim();
+  if (newText) item.text = newText;
+
+  const qty = sanitizeQtyInput(document.getElementById('edit-item-qty').value || '').trim();
+  item.qty  = qty ? qty.replace(',', '.') : '';
+
+  item.unit = document.getElementById('edit-item-unit').value;
+
+  const priceRaw = (document.getElementById('edit-item-price').value || '').trim().replace(',', '.');
+  item.price = priceRaw && !isNaN(parseFloat(priceRaw)) ? String(parseFloat(priceRaw)) : '';
+
+  await dbPutTodo(item);
+  closeEditModal();
+  render();
+});
+
+document.getElementById('edit-item-cancel').addEventListener('click', closeEditModal);
+document.getElementById('edit-item-overlay').addEventListener('click', (e) => {
+  if (e.target === e.currentTarget) closeEditModal();
+});
 
 // ======================
 //  Form submit

@@ -679,6 +679,39 @@ li.done .text-btn {
   width: 100%;
 }
 
+/* ========= MODIFICA PRODOTTO ========= */
+
+.edit-item-form input,
+.edit-item-form select {
+  width: 100%;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.edit-item-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.edit-item-row input,
+.edit-item-row select {
+  flex: 1;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.import-dialog-hint {
+  margin: -8px 0 14px;
+  font-size: .82rem;
+  color: var(--muted);
+  background: var(--field);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  line-height: 1.45;
+}
+
 /* ========= STAMPA SCONTRINO IN-PAGE (no popup, funziona su iOS Safari) ========= */
 
 #print-receipt-area {

@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-  <link rel="stylesheet" href="./styles.css?v=1.14.0" />
+  <link rel="stylesheet" href="./styles.css?v=1.15.0" />
 </head>
 <body>
 
@@ -118,6 +118,7 @@
         <span id="import-dialog-count" class="import-dialog-count"></span>
         verranno aggiunti alla tua app.
       </p>
+      <p id="import-dialog-hint" class="import-dialog-hint" hidden></p>
       <div class="import-dialog-actions">
         <button id="import-dialog-cancel"  class="sheet-btn sheet-btn-ghost">Annulla</button>
         <button id="import-dialog-confirm" class="sheet-btn import-confirm-btn">Importa</button>
@@ -143,13 +144,43 @@
     </div>
   </div>
 
+  <!-- DIALOG MODIFICA PRODOTTO -->
+  <div id="edit-item-overlay" class="import-overlay" aria-hidden="true"
+       role="dialog" aria-modal="true" aria-labelledby="edit-item-heading"
+       style="display:none">
+    <div class="import-dialog-box">
+      <h3 id="edit-item-heading" class="import-dialog-title">Modifica prodotto ✏️</h3>
+      <form id="edit-item-form" class="edit-item-form">
+        <input id="edit-item-text"  type="text"     placeholder="Nome prodotto"  autocomplete="off" />
+        <div class="edit-item-row">
+          <input id="edit-item-qty" type="text" inputmode="decimal" placeholder="Qtà" />
+          <select id="edit-item-unit">
+            <option value="">Unità</option>
+            <option value="pz">pz</option>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="Litri">Litri</option>
+            <option value="ml">ml</option>
+            <option value="confezione">confezione</option>
+            <option value="pacco">pacco</option>
+          </select>
+        </div>
+        <input id="edit-item-price" type="text" inputmode="decimal" placeholder="€ Prezzo (opz.)" />
+        <div class="import-dialog-actions">
+          <button type="button" id="edit-item-cancel" class="sheet-btn sheet-btn-ghost">Annulla</button>
+          <button type="submit" class="sheet-btn import-confirm-btn">Salva</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- AREA STAMPA SCONTRINO (in-page, no popup — funziona su iOS Safari) -->
   <div id="print-receipt-area" aria-hidden="true"></div>
 
   <!-- Config: definisce APP_VERSION -->
-  <script src="./config.js?v=1.14.0"></script>
+  <script src="./config.js?v=1.15.0"></script>
   <!-- Logica UI -->
-  <script src="./app.js?v=1.14.0"></script>
+  <script src="./app.js?v=1.15.0"></script>
 
   <!-- Registrazione SW usando APP_VERSION -->
   <script>
